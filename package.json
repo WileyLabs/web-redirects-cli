@@ -1,0 +1,32 @@
+{
+  "name": "web-redirects",
+  "version": "0.0.1",
+  "description": "Managing HTTP(S) redirects via JSON docs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "redirects": "./index.js"
+  },
+  "keywords": [
+    "http",
+    "https",
+    "router",
+    "redirect"
+  ],
+  "author": "John Wiley & Sons, Inc.",
+  "contributors": [
+    {
+      "name": "Benjamin Young",
+      "email": "byoung2@wiley.com"
+    }
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "chalk": "^4.1.0",
+    "level": "^6.0.1",
+    "yargs": "^15.4.1"
+  }
+}

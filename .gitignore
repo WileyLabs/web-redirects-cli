@@ -1,0 +1,5 @@
+node_modules/
+.cache-db/
+
+# directory for local testing of domain redirect JSON docs
+domains/
