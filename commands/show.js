@@ -1,7 +1,7 @@
 const axios = require('axios');
 const chalk = require('chalk');
 const level = require('level');
-const YAML = require('json2yaml');
+const YAML = require('js-yaml');
 
 function error(msg) {
   console.error(chalk.bold.red(msg));
@@ -101,7 +101,7 @@ Page Rules:`);
                 if (argv.format === 'json') {
                   console.dir(output, {depth: 5});
                 } else {
-                  console.log(YAML.stringify(output));
+                  console.log(YAML.safeDump(output));
                 }
                 // TODO: check for worker routes also
                 break;
