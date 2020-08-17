@@ -48,23 +48,22 @@ exports.handler = (argv) => {
         switch (argv.format) {
           case 'text':
             console.log(`Current redirects for ${argv.domain} (${val}):`);
-            axios.get(`/zones/${val}`)
-              .then((resp) => {
-                let zone = resp.data.result;
+            Promise.all([
+              axios.get(`/zones/${val}`),
+              axios.get(`/zones/${val}/pagerules`)
+            ])
+              .then((results) => {
+                let [zone, pagerules] = results.map((resp) => {
+                  return resp.data.result;
+                });
+
                 console.log(
-    `Zone Info:
-      ${chalk.bold(zone.name)} - ${zone.id}
-      ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.
-    `);
-              })
-              .catch((err) => {
-                console.error(err.response.data);
-              });
-            // let's also get the page rules
-            axios.get(`/zones/${val}/pagerules`)
-              .then((resp) => {
-                console.log(`Using ${chalk.bold(resp.data.result.length)} Page Rules:`);
-                resp.data.result.forEach((r) => {
+`Zone Info:
+  ${chalk.bold(zone.name)} - ${zone.id}
+  ${chalk.green(zone.plan.name)} - ${pagerules.length} of ${zone.meta.page_rule_quota} Page Rules used.
+
+Page Rules:`);
+                pagerules.forEach((r) => {
                   r.targets.forEach((t) => {
                     console.log(`  ${t.target} ${t.constraint.operator} ${t.constraint.value}`);
                   });
@@ -75,7 +74,7 @@ exports.handler = (argv) => {
                 });
               })
               .catch((err) => {
-                console.error(err.response.data);
+                console.error(err);
               });
             // TODO: check for worker routes also
             break;
