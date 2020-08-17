@@ -73,54 +73,49 @@ Page Rules:`);
                   console.log();
                 });
               })
-              .catch((err) => {
-                console.error(err);
-              });
+              .catch(console.error);
             // TODO: check for worker routes also
             break;
           case 'json':
           case 'yaml':
             let output = {};
-            axios.get(`/zones/${val}`)
-              .then((resp) => {
-                let zone = resp.data.result;
-                output = {
-                  'cloudflare:id': zone.id,
-                  name: zone.name
-                };
-                // let's also get the page rules
-                axios.get(`/zones/${val}/pagerules`)
-                  .then((resp) => {
-                    output.redirects = []
-                    resp.data.result.forEach((r) => {
-                      let redirect = {};
-                      // TODO: the following code assumes these are all
-                      // `forwarding_url` actions...they may not be...
-                      r.targets.forEach((t) => {
-                        let split_at = t.constraint.value.indexOf('/');
-                        redirect.base = t.constraint.value.substr(0, split_at);
-                        redirect.from = t.constraint.value.substr(split_at); // TODO: strip domain name?
-                      });
-                      r.actions.forEach((a) => {
-                        redirect.to = a.value.url;
-                        redirect.status = a.value.status_code;
-                      });
-                      output.redirects.push(redirect);
-                    });
-                    if (argv.format === 'json') {
-                      console.dir(output, {depth: 5});
-                    } else {
-                      console.log(YAML.stringify(output));
-                    }
-                  })
-                  .catch((err) => {
-                    console.error(err.response.data);
-                  });
+            Promise.all([
+              axios.get(`/zones/${val}`),
+              axios.get(`/zones/${val}/pagerules`)
+            ])
+            .then((results) => {
+              let [zone, pagerules] = results.map((resp) => {
+                return resp.data.result;
+              });
 
-                  })
-                  .catch((err) => {
-                    console.error(err.response.data);
-                  });
+              output = {
+                'cloudflare:id': zone.id,
+                name: zone.name,
+                redirects: []
+              };
+              pagerules.forEach((r) => {
+                let redirect = {};
+                // TODO: the following code assumes these are all
+                // `forwarding_url` actions...they may not be...
+                r.targets.forEach((t) => {
+                  let split_at = t.constraint.value.indexOf('/');
+                  redirect.base = t.constraint.value.substr(0, split_at);
+                  redirect.from = t.constraint.value.substr(split_at); // TODO: strip domain name?
+                });
+                r.actions.forEach((a) => {
+                  redirect.to = a.value.url;
+                  redirect.status = a.value.status_code;
+                });
+                output.redirects.push(redirect);
+              });
+
+              if (argv.format === 'json') {
+                console.dir(output, {depth: 5});
+              } else {
+                console.log(YAML.stringify(output));
+              }
+            })
+            .catch(console.error);
             // TODO: check for worker routes also
             break;
           default:
