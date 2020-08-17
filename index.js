@@ -15,38 +15,12 @@ function warn(msg) {
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
-// setup a local level store for key/values (mostly)
-let db = level('.cache-db');
 
 const argv = require('yargs')
   .scriptName('redirects')
   .env('WR')
   .usage('$0 <cmd> [args]')
-  .command('zones', 'List zones in current Cloudflare account', (yargs) => {
-      yargs.option('cloudflareToken', {
-        describe: `API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)`,
-        demandOption: true,
-        type: 'string'
-      });
-    }, (argv) => {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${argv.cloudflareToken}`;
-      axios.get('/zones')
-        .then((resp) => {
-          console.log(`${chalk.bold(resp.data.result.length)} Zones:`);
-          // loop through the returned zones and store a domain => id mapping
-          resp.data.result.forEach((zone) => {
-            console.log(`
-  ${chalk.bold(zone.name)} - ${zone.id} in ${zone.account.name}
-  ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.`);
-            db.put(zone.name, zone.id)
-              .catch(console.error);
-          });
-        })
-        .catch((err) => {
-          console.error(err.response.data);
-        });
-    }
-  )
+  .command(require('./commands/zones.js'))
   .command('show [domain]', 'Show current redirects for [domain]', (yargs) => {
       yargs.option('cloudflareToken', {
         describe: 'API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)',
@@ -68,6 +42,9 @@ const argv = require('yargs')
       if (!('domain' in argv)) {
         error(`Which domain where you wanting to show redirects for?`);
       } else {
+        // setup a local level store for key/values (mostly)
+        const db = level(`${process.cwd()}/.cache-db`);
+
         db.get(argv.domain)
           .then((val) => {
             switch (argv.format) {
@@ -155,6 +132,7 @@ const argv = require('yargs')
             }
           })
           .catch(console.error);
+        db.close();
       }
     }
   )
