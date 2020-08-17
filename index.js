@@ -3,7 +3,7 @@
 const axios = require('axios');
 const chalk = require('chalk');
 const level = require('level');
-
+const YAML = require('json2yaml');
 
 function error(msg) {
   console.error(chalk.bold.red(msg));
@@ -53,6 +53,11 @@ const argv = require('yargs')
         demandOption: true,
         type: 'string'
       })
+      .option('format', {
+        description: 'Output a JSON or YAML description file for all redirects.',
+        choices: ['json', 'yaml', 'text'],
+        default: 'text'
+      })
       .positional('domain', {
         type: 'string',
         describe: 'a valid domain name'
@@ -65,37 +70,89 @@ const argv = require('yargs')
       } else {
         db.get(argv.domain)
           .then((val) => {
-            console.log(`Current redirects for ${argv.domain} (${val}):`);
-            axios.get(`/zones/${val}`)
-              .then((resp) => {
-                let zone = resp.data.result;
-                console.log(
-`Zone Info:
-  ${chalk.bold(zone.name)} - ${zone.id}
-  ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.
-`);
-              })
-              .catch((err) => {
-                console.error(err.response.data);
-              });
-            // let's also get the page rules
-            axios.get(`/zones/${val}/pagerules`)
-              .then((resp) => {
-                console.log(`Using ${chalk.bold(resp.data.result.length)} Page Rules:`);
-                resp.data.result.forEach((r) => {
-                  r.targets.forEach((t) => {
-                    console.log(`  ${t.target} ${t.constraint.operator} ${t.constraint.value}`);
+            switch (argv.format) {
+              case 'text':
+                console.log(`Current redirects for ${argv.domain} (${val}):`);
+                axios.get(`/zones/${val}`)
+                  .then((resp) => {
+                    let zone = resp.data.result;
+                    console.log(
+    `Zone Info:
+      ${chalk.bold(zone.name)} - ${zone.id}
+      ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.
+    `);
+                  })
+                  .catch((err) => {
+                    console.error(err.response.data);
                   });
-                  r.actions.forEach((a) => {
-                    console.log(`  ${a.id} ${a.value.status_code} ${a.value.url}`);
+                // let's also get the page rules
+                axios.get(`/zones/${val}/pagerules`)
+                  .then((resp) => {
+                    console.log(`Using ${chalk.bold(resp.data.result.length)} Page Rules:`);
+                    resp.data.result.forEach((r) => {
+                      r.targets.forEach((t) => {
+                        console.log(`  ${t.target} ${t.constraint.operator} ${t.constraint.value}`);
+                      });
+                      r.actions.forEach((a) => {
+                        console.log(`  ${a.id} ${a.value.status_code} ${a.value.url}`);
+                      });
+                      console.log();
+                    });
+                  })
+                  .catch((err) => {
+                    console.error(err.response.data);
                   });
-                  console.log();
-                });
-              })
-              .catch((err) => {
-                console.error(err.response.data);
-              });
-            // TODO: check for worker routes also
+                // TODO: check for worker routes also
+                break;
+              case 'json':
+              case 'yaml':
+                let output = {};
+                axios.get(`/zones/${val}`)
+                  .then((resp) => {
+                    let zone = resp.data.result;
+                    output = {
+                      'cloudflare:id': zone.id,
+                      name: zone.name
+                    };
+                    // let's also get the page rules
+                    axios.get(`/zones/${val}/pagerules`)
+                      .then((resp) => {
+                        output.redirects = []
+                        resp.data.result.forEach((r) => {
+                          let redirect = {};
+                          // TODO: the following code assumes these are all
+                          // `forwarding_url` actions...they may not be...
+                          r.targets.forEach((t) => {
+                            let split_at = t.constraint.value.indexOf('/');
+                            redirect.base = t.constraint.value.substr(0, split_at);
+                            redirect.from = t.constraint.value.substr(split_at); // TODO: strip domain name?
+                          });
+                          r.actions.forEach((a) => {
+                            redirect.to = a.value.url;
+                            redirect.status = a.value.status_code;
+                          });
+                          output.redirects.push(redirect);
+                        });
+                        if (argv.format === 'json') {
+                          console.dir(output, {depth: 5});
+                        } else {
+                          console.log(YAML.stringify(output));
+                        }
+                      })
+                      .catch((err) => {
+                        console.error(err.response.data);
+                      });
+
+                      })
+                      .catch((err) => {
+                        console.error(err.response.data);
+                      });
+                // TODO: check for worker routes also
+                break;
+              default:
+                error('Sorry, that format is not yet supported.');
+                break;
+            }
           })
           .catch(console.error);
       }

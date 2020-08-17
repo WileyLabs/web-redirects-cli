@@ -57,13 +57,23 @@ will (or have) setup in Cloudflare and use the following format:
   "name":"example.com",
   "redirects": [
     {
+      "base": "*example.com",
       "from": "/(.*)",
       "to": "https://example.org/$1",
+      "status": 301
+    },
+    {
+      "base": "www.example.com",
+      "from": "/only-on-www",
+      "to": "https://example.org/www-was-here",
       "status": 301
     }
   ]
 }
 ```
+
+The `redirects.base` key, if absent is presumed to be `*${name}/*` when
+creating Page Rule based redirects.
 
 ## License
 
