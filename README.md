@@ -39,7 +39,39 @@ redirects <cmd> [args]
 Commands:
   redirects zones          List zones in current Cloudflare account
   redirects show [domain]  Show current redirects for [domain]
+  redirects check [domain]  Check a [domain]'s settings and redirects
 ```
+
+## Settings and Redirects Directory
+
+Create a directory (typically `domains/` or `redirects/`) anywhere you'd like
+to track such things. To get all your redirects on the same foundation, add a
+`.settings.yaml` file to that directory. Here's a starter (with some tweaks to
+Cloudflare's defaults):
+```yaml
+---
+# Standard settings for all redirect zones
+always_use_https: "on"
+ipv6: "on"
+min_tls_version: "1.2"
+security_header:
+  strict_transport_security:
+    enabled: true
+    max_age: 0
+    include_subdomains: true
+    preload: true
+    nosniff: true
+ssl: "full"
+```
+
+Each key maps to a [Cloudflare Zone
+Setting](https://api.cloudflare.com/#zone-settings-properties).
+
+The `check` command will explain where things differ between the
+`.settings.yaml` contents, and the currently selected zone.
+
+Once that's created, you can add additional "Redirect Documents" to the
+directory--one per zone name (typically the apex domain for your redirects).
 
 ## Write a Redirect Document
 
