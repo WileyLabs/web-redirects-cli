@@ -3,12 +3,7 @@ const chalk = require('chalk');
 const level = require('level');
 const YAML = require('js-yaml');
 
-function error(msg) {
-  console.error(chalk.bold.red(msg));
-}
-function warn(msg) {
-  console.log(chalk.keyword('orange')(msg));
-}
+const { error, warn, convertPageRulesToRedirects } = require('../lib/shared.js');
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -80,23 +75,8 @@ Page Rules:`);
                 output = {
                   'cloudflare:id': zone.id,
                   name: zone.name,
-                  redirects: []
+                  redirects: convertPageRulesToRedirects(pagerules)
                 };
-                pagerules.forEach((r) => {
-                  let redirect = {};
-                  // TODO: the following code assumes these are all
-                  // `forwarding_url` actions...they may not be...
-                  r.targets.forEach((t) => {
-                    let split_at = t.constraint.value.indexOf('/');
-                    redirect.base = t.constraint.value.substr(0, split_at);
-                    redirect.from = t.constraint.value.substr(split_at); // TODO: strip domain name?
-                  });
-                  r.actions.forEach((a) => {
-                    redirect.to = a.value.url;
-                    redirect.status = a.value.status_code;
-                  });
-                  output.redirects.push(redirect);
-                });
 
                 if (argv.format === 'json') {
                   console.dir(output, {depth: 5});
