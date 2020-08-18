@@ -27,27 +27,28 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 /**
  * Check a [domain]'s settings and redirects
  **/
-exports.command = 'check [domain] [dir]';
-exports.describe = 'Check a [domain]\'s redirects with [dir]\'s descriptions';
+exports.command = 'check [domain]';
+exports.describe = 'Check a [domain]\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
 exports.builder = (yargs) => {
   yargs.option('cloudflareToken', {
     describe: `API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)`,
     demandOption: true,
     type: 'string'
   })
-  .positional('domain', {
+  .option('configDir', {
     type: 'string',
-    describe: 'a valid domain name'
-  })
-  .positional('dir', {
-    type: 'string',
-    describe: 'directory containing the `.settings.yaml` default configuration',
+    describe: 'directory containing the `.settings.yaml` default configuration (WR_CONFIG_DIR)',
+    default: '.',
     coerce(v) {
       return {
         name: v,
         contents: fs.readdirSync(v, 'utf8')
       };
     }
+  })
+  .positional('domain', {
+    type: 'string',
+    describe: 'a valid domain name'
   });
 };
 exports.handler = (argv) => {
@@ -81,8 +82,8 @@ exports.handler = (argv) => {
             settings.forEach((s) => {
               current[s.id] = s.value;
             });
-            if ('dir' in argv && argv.dir.contents.indexOf('.settings.yaml') > -1) {
-              let settings_path = path.join(process.cwd(), argv.dir.name,
+            if (argv.configDir.contents.indexOf('.settings.yaml') > -1) {
+              let settings_path = path.join(process.cwd(), argv.configDir.name,
                                             '.settings.yaml');
               try {
                 let baseline = YAML.safeLoad(fs.readFileSync(settings_path));

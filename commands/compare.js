@@ -27,19 +27,20 @@ function outputDifferences(updates, current, level = 0) {
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 /**
- * Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
+ * Compare [configDir]'s local redirect descriptions for [domain] with Cloudflare's
  **/
-exports.command = 'compare [dir] [domain]';
-exports.describe = 'Compare [dir]\'s local redirect descriptions for [domain] with Cloudflare\'s';
+exports.command = 'compare [domain]';
+exports.describe = 'Compare [configDir]\'s local redirect descriptions for [domain] with Cloudflare\'s';
 exports.builder = (yargs) => {
   yargs.option('cloudflareToken', {
     describe: `API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)`,
     demandOption: true,
     type: 'string'
   })
-  .positional('dir', {
+  .option('configDir', {
     type: 'string',
-    describe: 'directory for redirect definitions',
+    describe: 'directory containing the `.settings.yaml` default configuration (WR_CONFIG_DIR)',
+    default: '.',
     coerce(v) {
       return {
         name: v,
@@ -79,16 +80,16 @@ exports.handler = (argv) => {
   ${chalk.green(zone.plan.name)} - ${pagerules.length} of ${zone.meta.page_rule_quota} Page Rules used.
 `);
 
-            if ('dir' in argv && 'contents' in argv.dir) {
+            if ('contents' in argv.configDir) {
               // grab the first on with a matching zone name
               // TODO: throw a warning if we find more than one...'cause that's just confusing...
-              let redir_filename = argv.dir.contents.filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
+              let redir_filename = argv.configDir.contents.filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
               if (undefined === redir_filename) {
                 console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
               } else {
                 // compare descriptive redirect against current page rule(s)
                 let current_redirects = convertPageRulesToRedirects(pagerules);
-                let redir_filepath = path.join(process.cwd(), argv.dir.name, redir_filename);
+                let redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
                 let described_redirects = YAML.safeLoad(fs.readFileSync(redir_filepath));
                 let missing_redirs = diff(current_redirects, described_redirects.redirects);
 
