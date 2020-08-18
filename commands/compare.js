@@ -4,6 +4,7 @@ const path = require('path');
 const axios = require('axios');
 const chalk = require('chalk');
 const { diff } = require('deep-object-diff');
+const inquirer = require('inquirer');
 const level = require('level');
 const YAML = require('js-yaml');
 
@@ -95,11 +96,48 @@ exports.handler = (argv) => {
 
                 if (Object.keys(missing_redirs).length > 0) {
                   warn('These redirects are missing:');
+                  let missing_pagerules = [];
                   Object.values(missing_redirs).forEach((redir) => {
-                    outputPageRulesAsText([convertRedirectToPageRule(redir)]);
+                    missing_pagerules.push(convertRedirectToPageRule(redir));
+                  });
+                  outputPageRulesAsText(missing_pagerules);
+                  console.log();
+                  inquirer.prompt({
+                    type: 'confirm',
+                    name: 'confirmUpdates',
+                    message: `Update ${zone.name} to add the ${chalk.bold(Object.keys(missing_redirs).length)} redirects?`,
+                    default: false,
+                  }).then((answers) => {
+                    // TODO: handle each update separately
+                    if (answers.confirmUpdates) {
+                      // add the first page rule (only) to this zone on Cloudflare
+                      axios.post(`/zones/${val}/pagerules`, {
+                          status: 'active',
+                          // splat in `targets` and `actions`
+                          ...missing_pagerules[0]
+                        })
+                        .then((resp) => {
+                          if (resp.data.success) {
+                            console.log(`Success! The following page rule has been created and enabled:`);
+                            outputPageRulesAsText([resp.data.result]);
+                          }
+                        })
+                        .catch((err) => {
+                          // TODO: handle errors better... >_<
+                          if ('response' in err
+                              && 'status' in err.response
+                              && err.response.status === 403) {
+                            error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
+                          } else {
+                            console.error(err);
+                          }
+                        });
+                      // tell the user to tweak permissions if it fails
+                    }
                   });
                 } else {
                   console.log(`${chalk.bold.green('✓')} Current redirect descriptions match the preferred configuration.`);
+                  outputPageRulesAsText(pagerules);
                 }
               }
             }
