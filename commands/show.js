@@ -3,7 +3,8 @@ const chalk = require('chalk');
 const level = require('level');
 const YAML = require('js-yaml');
 
-const { error, warn, convertPageRulesToRedirects } = require('../lib/shared.js');
+const { error, convertPageRulesToRedirects,
+  outputPageRulesAsText } = require('../lib/shared.js');
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -58,15 +59,7 @@ Zone Info:
   ${chalk.green(zone.plan.name)} - ${pagerules.length} of ${zone.meta.page_rule_quota} Page Rules used.
 
 Page Rules:`);
-                pagerules.forEach((r) => {
-                  r.targets.forEach((t) => {
-                    console.log(`  ${t.target} ${t.constraint.operator} ${t.constraint.value}`);
-                  });
-                  r.actions.forEach((a) => {
-                    console.log(`  ${a.id} ${a.value.status_code} ${a.value.url}`);
-                  });
-                  console.log();
-                });
+                outputPageRulesAsText(pagerules);
                 // TODO: check for worker routes also
                 break;
               case 'json':

@@ -8,7 +8,8 @@ const level = require('level');
 const YAML = require('js-yaml');
 
 const { error, warn,
-  convertPageRulesToRedirects, convertRedirectToPageRule } = require('../lib/shared.js');
+  convertPageRulesToRedirects, convertRedirectToPageRule,
+  outputPageRulesAsText } = require('../lib/shared.js');
 
 function outputDifferences(updates, current, level = 0) {
   for (let key in updates) {
@@ -115,7 +116,7 @@ exports.handler = (argv) => {
                 if (Object.keys(missing_redirs).length > 0) {
                   warn('These redirects are missing:');
                   Object.values(missing_redirs).forEach((redir) => {
-                    console.dir(convertRedirectToPageRule(redir), {depth: 5});
+                    outputPageRulesAsText([convertRedirectToPageRule(redir)]);
                   });
                 } else {
                   console.log(`${chalk.bold.green('✓')} Current redirect descriptions match the preferred configuration.`);
