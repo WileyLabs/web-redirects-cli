@@ -27,20 +27,28 @@ Note: You can also pass this token in as a command line parameter
 (i.e. `--cloudflareToken`) if you'd prefer.
 
 
-Next install the script, and run it.
+Next install the script, and run it to see the help information:
 ```sh
 $ npm i
 $ redirects -h
-```
-
-```
 redirects <cmd> [args]
 
 Commands:
-  redirects zones          List zones in current Cloudflare account
-  redirects show [domain]  Show current redirects for [domain]
-  redirects check [domain]  Check a [domain]'s settings and redirects
+  redirects zones             List zones in current Cloudflare account
+  redirects show [domain]     Show current redirects for [domain]
+  redirects check [domain]    Check a [domain]'s settings with [configDir]'s
+                              default configuration (`.settings.yaml`)
+  redirects compare [domain]  Compare [configDir]'s local redirect descriptions
+                              for [domain] with Cloudflare's
 ```
+
+Currently, all the comands require the `--cloudflareToken` which can also be
+set as an environment variable: `WR_CLOUDFLARE_TOKEN`.
+
+Additionally, the redirect descriptions are managed in a single directory who's
+path can be set using the `--configDir` or `WR_CONFIG_DIR` environment
+variable. It does default to `.`, so if you're running `redirects` in your
+config/redirects folder, then you can avoid setting it.
 
 ## Settings and Redirects Directory
 
