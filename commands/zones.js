@@ -29,7 +29,7 @@ exports.handler = (argv) => {
       resp.data.result.forEach((zone) => {
         console.log(`
   ${chalk.bold(zone.name)} - ${zone.id} in ${zone.account.name}
-  ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.`);
+  ${zone.status === 'active' ? chalk.green('✓') : chalk.blue('🕓')} ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.`);
         db.put(zone.name, zone.id)
           .catch(console.error);
       });
