@@ -11,8 +11,10 @@ require('yargs')
   .command(require('./commands/zones.js'))
   // Show current redirects for [domain]
   .command(require('./commands/show.js'))
-  // Check a [domain]'s settings and redirects
+  // Check [domain]'s settings with Cloudflare's
   .command(require('./commands/check.js'))
+  // Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
+  .command(require('./commands/compare.js'))
   .demandCommand(1, '')
   .alias('h', 'help')
   .argv;

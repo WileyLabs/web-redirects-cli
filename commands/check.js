@@ -3,13 +3,11 @@ const path = require('path');
 
 const axios = require('axios');
 const chalk = require('chalk');
-const { diff, updatedDiff } = require('deep-object-diff');
+const { updatedDiff } = require('deep-object-diff');
 const level = require('level');
 const YAML = require('js-yaml');
 
-const { error, warn,
-  convertPageRulesToRedirects, convertRedirectToPageRule,
-  outputPageRulesAsText } = require('../lib/shared.js');
+const { error, warn } = require('../lib/shared.js');
 
 function outputDifferences(updates, current, level = 0) {
   for (let key in updates) {
@@ -43,7 +41,7 @@ exports.builder = (yargs) => {
   })
   .positional('dir', {
     type: 'string',
-    describe: 'directory for redirect definitions and `.settings.yaml`',
+    describe: 'directory containing the `.settings.yaml` default configuration',
     coerce(v) {
       return {
         name: v,
@@ -97,30 +95,6 @@ exports.handler = (argv) => {
                 }
               } catch(err) {
                 console.error(err);
-              }
-            }
-
-            if ('dir' in argv && 'contents' in argv.dir) {
-              // grab the first on with a matching zone name
-              // TODO: throw a warning if we find more than one...'cause that's just confusing...
-              let redir_filename = argv.dir.contents.filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
-              if (undefined === redir_filename) {
-                console.log(chalk.keyword('purple')(`\nNo redirect description for ${chalk.bold(zone.name)} was found.`));
-              } else {
-                // compare descriptive redirect against current page rule(s)
-                let current_redirects = convertPageRulesToRedirects(pagerules);
-                let redir_filepath = path.join(process.cwd(), argv.dir.name, redir_filename);
-                let described_redirects = YAML.safeLoad(fs.readFileSync(redir_filepath));
-                let missing_redirs = diff(current_redirects, described_redirects.redirects);
-
-                if (Object.keys(missing_redirs).length > 0) {
-                  warn('These redirects are missing:');
-                  Object.values(missing_redirs).forEach((redir) => {
-                    outputPageRulesAsText([convertRedirectToPageRule(redir)]);
-                  });
-                } else {
-                  console.log(`${chalk.bold.green('✓')} Current redirect descriptions match the preferred configuration.`);
-                }
               }
             }
           })
