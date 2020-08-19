@@ -78,7 +78,7 @@ exports.handler = (argv) => {
       if (missing.length > 0) {
         console.log(`\nThe following ${chalk.bold(missing.length)} domains are not yet in Cloudflare:`);
         missing.forEach((li) => {
-          console.log(` - ${li}`);
+          console.log(` - ${li.substr(0, li.length-5)} (see ${path.join(argv.configDir.name, li)})`);
         });
       }
     })
