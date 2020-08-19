@@ -4,10 +4,11 @@ const path = require('path');
 const axios = require('axios');
 const chalk = require('chalk');
 const { updatedDiff } = require('deep-object-diff');
+const inquirer = require('inquirer');
 const level = require('level');
 const YAML = require('js-yaml');
 
-const { error, warn } = require('../lib/shared.js');
+const { error, warn, convertToIdValueObjectArray } = require('../lib/shared.js');
 
 function outputDifferences(updates, current, level = 0) {
   for (let key in updates) {
@@ -91,6 +92,32 @@ exports.handler = (argv) => {
                 if (Object.keys(updates).length > 0) {
                   warn('These settings need updating:');
                   outputDifferences(updates, current);
+                  console.log()
+                  inquirer.prompt({
+                    type: 'confirm',
+                    name: 'confirmUpdates',
+                    // TODO: ask for each setting?
+                    message: `Update ${zone.name} to match all these settings?`,
+                    default: false
+                    }).then((answers) => {
+                      if (answers.confirmUpdates) {
+                        axios.patch(`/zones/${val}/settings`,
+                                    {items: convertToIdValueObjectArray(updates)})
+                          .then((resp) => {
+                            if (resp.data.success) {
+                              console.log('Success! The settings have been updated.');
+                            }
+                          }).catch((err) => {
+                            if ('response' in err
+                                && 'status' in err.response
+                                && err.response.status === 403) {
+                              error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
+                            } else {
+                              console.error(err);
+                            }
+                          });
+                      }
+                    }).catch(console.error);
                 } else {
                   console.log(`${chalk.bold.green('✓')} Current zone settings match the preferred configuration.`);
                 }
