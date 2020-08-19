@@ -3,6 +3,7 @@ const path = require('path');
 
 const axios = require('axios');
 const chalk = require('chalk');
+const inquirer = require('inquirer');
 const level = require('level');
 
 // foundational HTTP setup to Cloudflare's API
@@ -64,6 +65,9 @@ exports.handler = (argv) => {
         if (description_file) {
           console.log(chalk.keyword('purple')(`  Redirect description exists: ${description_file}`));
         }
+        if (zone.status === 'pending') {
+          console.log(chalk.keyword('lightblue')(`  Update the nameservers to: ${zone.name_servers.join(', ')}`));
+        }
         db.put(zone.name, zone.id)
           .catch(console.error);
       });
@@ -79,6 +83,104 @@ exports.handler = (argv) => {
         console.log(`\nThe following ${chalk.bold(missing.length)} domains are not yet in Cloudflare:`);
         missing.forEach((li) => {
           console.log(` - ${li.substr(0, li.length-5)} (see ${path.join(argv.configDir.name, li)})`);
+        });
+
+        // ask if the user is ready to create the above missing zones
+        console.log();
+        inquirer.prompt({
+          type: 'confirm',
+          name: 'confirmCreateIntent',
+          message: `Are you ready to create the missing zones on Cloudflare?`,
+          default: false
+        }).then((answers) => {
+          if (answers.confirmCreateIntent) {
+            // first, confirm which Cloudflare account (there should only be one)
+            // ...so for now we just grab the first one...
+            axios.get('/accounts')
+              .then((resp) => {
+                if (resp.data.success) {
+                  let account_id = resp.data.result[0].id;
+                  let account_name = resp.data.result[0].name;
+                  // TODO: get confirmation on the account found?
+                  console.log(`We'll be adding these to ${account_name}.`);
+
+                  // now loop through each domain and offer to create it and add redirs
+                  missing.forEach((filename) => {
+                    let domain = filename.substr(0, filename.length-5);
+                    inquirer.prompt({
+                      type: 'confirm',
+                      name: 'confirmCreate',
+                      message: `Add ${domain} to ${account_name}?`,
+                      default: false
+                    }).then((answers) => {
+                      if (answers.confirmCreate) {
+                        axios.post('/zones', {
+                            name: domain,
+                            account: {id: account_id},
+                            jump_start: true
+                          })
+                          .then((resp) => {
+                            if (resp.data.success) {
+                              console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
+                              let zone_id = resp.data.result.id;
+
+                              // now let's add the page rules
+                              let redir_filepath = path.join(process.cwd(),
+                                                             argv.configDir.name,
+                                                             filename);
+                              try {
+                                let description = YAML.safeLoad(fs.readFileSync((redir_filepath)));
+                                description.redirects.forEach((redir) => {
+                                  let pagerule = convertRedirectToPageRule(redir, `*${domain}`);
+                                  console.log(`Does this Page Rule look OK?`);
+                                  outputPageRulesAsText([pagerule]);
+                                  inquirer.prompt({
+                                    type: 'confirm',
+                                    name: 'proceed',
+                                    message: 'Shall we continue?',
+                                    default: true
+                                  }).then((answers) => {
+                                    if (answers.proceed) {
+                                      axios.post(`/zones/${zone_id}/pagerules`, {
+                                          status: 'active',
+                                          // splat in `targets` and `actions`
+                                          ...pagerule
+                                        })
+                                        .then((resp) => {
+                                          if (resp.data.success) {
+                                            console.log('Page rule successfully created!');
+                                            outputPageRulesAsText(resp.data.result);
+                                          }
+                                        })
+                                        .catch(console.error);
+                                    }
+                                  });
+                                });
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }
+                          })
+                          .catch((err) => {
+                            // TODO: handle errors better... >_<
+                            if ('response' in err
+                                && 'status' in err.response
+                                && err.response.status === 403) {
+                              error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
+                            } else {
+                              console.error(err);
+                            }
+                          });
+                      }
+                    });
+                  });
+                }
+              })
+              .catch((err) => {
+                console.log(err);
+                console.dir(err.response.data, {depth: 5});
+              });
+          }
         });
       }
     })
