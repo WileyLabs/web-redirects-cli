@@ -98,7 +98,7 @@ exports.handler = (argv) => {
                   warn('These redirects are missing:');
                   let missing_pagerules = [];
                   Object.values(missing_redirs).forEach((redir) => {
-                    missing_pagerules.push(convertRedirectToPageRule(redir));
+                    missing_pagerules.push(convertRedirectToPageRule(redir, `*${zone.name}`));
                   });
                   outputPageRulesAsText(missing_pagerules);
                   console.log();
