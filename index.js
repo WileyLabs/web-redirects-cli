@@ -8,7 +8,7 @@ require('yargs')
   .env('WR')
   .usage('$0 <cmd> [args]')
   // List zones in current Cloudflare account
-  .command(require('./commands/zones.js'))
+  .command(require('./commands/domains.js'))
   // Show current redirects for [domain]
   .command(require('./commands/show.js'))
   // Check [domain]'s settings with Cloudflare's

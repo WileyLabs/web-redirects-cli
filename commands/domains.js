@@ -26,8 +26,8 @@ function findDescription(domain, dir) {
 /**
  * Lists available Zones/Sites in Cloudflare
  **/
-exports.command = 'zones';
-exports.describe = 'List zones in current Cloudflare account';
+exports.command = ['domains', 'zones'];
+exports.describe = 'List domains in the current Cloudflare account';
 exports.builder = (yargs) => {
   yargs.option('cloudflareToken', {
     describe: `API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)`,
