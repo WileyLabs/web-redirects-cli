@@ -93,11 +93,16 @@ exports.handler = (argv) => {
                 let redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
                 let described_redirects = YAML.safeLoad(fs.readFileSync(redir_filepath));
                 let missing_redirs = diff(current_redirects, described_redirects.redirects);
+                // filter out missing `base` entries...
+                // if there's no from/to it's not an actual redir, just different JSON
+                // also converts missing_redirs to an array
+                missing_redirs = Object.values(missing_redirs)
+                  .filter((redir) => 'from' in redir && 'to' in redir);
 
                 if (Object.keys(missing_redirs).length > 0) {
                   warn('These redirects are missing:');
                   let missing_pagerules = [];
-                  Object.values(missing_redirs).forEach((redir) => {
+                  missing_redirs.forEach((redir) => {
                     missing_pagerules.push(convertRedirectToPageRule(redir, `*${zone.name}`));
                   });
                   outputPageRulesAsText(missing_pagerules);
