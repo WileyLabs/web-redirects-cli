@@ -33,23 +33,7 @@ function findDescription(domain, dir) {
  **/
 exports.command = ['domains', 'zones'];
 exports.describe = 'List domains in the current Cloudflare account';
-exports.builder = (yargs) => {
-  yargs.option('cloudflareToken', {
-    describe: `API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)`,
-    demandOption: true,
-    type: 'string'
-  }).option('configDir', {
-    type: 'string',
-    describe: 'directory containing the redirect descriptions (WR_CONFIG_DIR)',
-    default: '.',
-    coerce(v) {
-      return {
-        name: v,
-        contents: fs.readdirSync(v, 'utf8')
-      };
-    }
-  });
-};
+//exports.builder = (yargs) => {};
 exports.handler = (argv) => {
   axios.defaults.headers.common['Authorization'] = `Bearer ${argv.cloudflareToken}`;
   axios.get('/zones')

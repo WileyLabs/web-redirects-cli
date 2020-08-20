@@ -20,22 +20,7 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 exports.command = 'show [domain]';
 exports.describe = 'Show current redirects for [domain]';
 exports.builder = (yargs) => {
-  yargs.option('cloudflareToken', {
-    describe: 'API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)',
-    demandOption: true,
-    type: 'string'
-  })
-  .option('configDir', {
-    type: 'string',
-    describe: 'directory containing the `.settings.yaml` default configuration (WR_CONFIG_DIR)',
-    default: '.',
-    coerce(v) {
-      return {
-        name: v,
-        contents: fs.readdirSync(v, 'utf8')
-      };
-    }
-  })
+  yargs
   .option('format', {
     description: 'Output a JSON or YAML description file for all redirects.',
     choices: ['json', 'yaml', 'text'],

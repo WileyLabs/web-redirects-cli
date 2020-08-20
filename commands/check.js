@@ -31,22 +31,7 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 exports.command = 'check [domain]';
 exports.describe = 'Check a [domain]\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
 exports.builder = (yargs) => {
-  yargs.option('cloudflareToken', {
-    describe: `API (Bearer) token for the Cloudflare API (WR_CLOUDFLARE_TOKEN)`,
-    demandOption: true,
-    type: 'string'
-  })
-  .option('configDir', {
-    type: 'string',
-    describe: 'directory containing the `.settings.yaml` default configuration (WR_CONFIG_DIR)',
-    default: '.',
-    coerce(v) {
-      return {
-        name: v,
-        contents: fs.readdirSync(v, 'utf8')
-      };
-    }
-  })
+  yargs
   .positional('domain', {
     type: 'string',
     describe: 'a valid domain name'
