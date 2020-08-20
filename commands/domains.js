@@ -5,6 +5,10 @@ const axios = require('axios');
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const level = require('level');
+const YAML = require('js-yaml');
+
+const { convertRedirectToPageRule, error,
+  outputPageRulesAsText, warn } = require('../lib/shared.js');
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -105,7 +109,9 @@ exports.handler = (argv) => {
                   console.log(`We'll be adding these to ${account_name}.`);
 
                   // now loop through each domain and offer to create it and add redirs
-                  missing.forEach((filename) => {
+                  function confirmDomainAdditions(domains_to_add) {
+                    if (domains_to_add.length === 0) return;
+                    let filename = domains_to_add.shift();
                     let domain = filename.substr(0, filename.length-5);
                     inquirer.prompt({
                       type: 'confirm',
@@ -121,8 +127,8 @@ exports.handler = (argv) => {
                           })
                           .then((resp) => {
                             if (resp.data.success) {
-                              console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
                               let zone_id = resp.data.result.id;
+                              console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
 
                               // now let's add the page rules
                               let redir_filepath = path.join(process.cwd(),
@@ -149,10 +155,30 @@ exports.handler = (argv) => {
                                         .then((resp) => {
                                           if (resp.data.success) {
                                             console.log('Page rule successfully created!');
-                                            outputPageRulesAsText(resp.data.result);
+                                            outputPageRulesAsText(Array.isArray(resp.data.result) ? resp.data.result : [resp.data.result]);
+                                            confirmDomainAdditions(domains_to_add);
                                           }
                                         })
-                                        .catch(console.error);
+                                        .catch((err) => {
+                                          // TODO: handle errors better... >_<
+                                          if ('response' in err
+                                              && 'status' in err.response
+                                              && err.response.status >= 400) {
+                                                let data = err.response.data;
+                                                if (data.errors.length > 0) {
+                                                  // collect error/message combos and display those
+                                                  for (let i = 0; i < data.errors.length; i++) {
+                                                    error(data.errors[i].message.split(':')[0]);
+                                                    warn(data.messages[i].message.split(':')[1]);
+                                                  }
+                                                } else {
+                                                  // assume we have something...else...
+                                                  console.dir(data, {depth: 5});
+                                                }
+                                          } else {
+                                            console.dir(err, {depth: 5});
+                                          }
+                                        });
                                     }
                                   });
                                 });
@@ -171,9 +197,16 @@ exports.handler = (argv) => {
                               console.error(err);
                             }
                           });
+                      } else {
+                        // no on the current one, but let's keep going
+                        confirmDomainAdditions(domains_to_add);
                       }
                     });
-                  });
+                  }
+
+                  // recursive function that will add each in sequence (based
+                  // on positive responses of course)
+                  confirmDomainAdditions(missing);
                 }
               })
               .catch((err) => {
