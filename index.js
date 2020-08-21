@@ -34,6 +34,8 @@ require('yargs')
   .command(require('./commands/check.js'))
   // Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
   .command(require('./commands/compare.js'))
+  // Mange the DNS records for [domain]
+  .command(require('./commands/dns.js'))
   .demandCommand(1, '')
   .alias('h', 'help')
   .argv;
