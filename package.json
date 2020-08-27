@@ -1,5 +1,5 @@
 {
-  "name": "web-redirects",
+  "name": "web-redirects-cli",
   "version": "0.0.1",
   "description": "Managing HTTP(S) redirects via JSON docs",
   "main": "index.js",
