@@ -17,8 +17,8 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
  * Show a specific domain name's Zone/Site info from Cloudflare + current Page
  * Rules.
  **/
-exports.command = 'show [domain]';
-exports.describe = 'Show current redirects for [domain]';
+exports.command = 'show <domain>';
+exports.describe = 'Show current redirects for <domain>';
 exports.builder = (yargs) => {
   yargs
   .option('format', {
@@ -29,11 +29,13 @@ exports.builder = (yargs) => {
   .option('export', {
     description: 'Save a JSON or YAML redirects description file to [configDir].',
     type: 'boolean',
-    default: false
+    default: false,
+    implies: ['configDir']
   })
   .positional('domain', {
     type: 'string',
-    describe: 'a valid domain name'
+    describe: 'a valid domain name',
+    demandOption: true
   });
 };
 exports.handler = (argv) => {

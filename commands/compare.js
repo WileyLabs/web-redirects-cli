@@ -28,16 +28,18 @@ function outputDifferences(updates, current, level = 0) {
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 /**
- * Compare [configDir]'s local redirect descriptions for [domain] with Cloudflare's
+ * Compare [configDir]'s local redirect descriptions for <domain> with Cloudflare's
  **/
-exports.command = 'compare [domain]';
-exports.describe = 'Compare [configDir]\'s local redirect descriptions for [domain] with Cloudflare\'s';
+exports.command = 'compare <domain>';
+exports.describe = 'Compare [configDir]\'s local redirect descriptions for <domain> with Cloudflare\'s';
 exports.builder = (yargs) => {
   yargs
   .positional('domain', {
     type: 'string',
-    describe: 'a valid domain name'
-  });
+    describe: 'a valid domain name',
+    demandOption: true
+  })
+  .demandOption('configDir');
 };
 exports.handler = (argv) => {
   axios.defaults.headers.common['Authorization'] = `Bearer ${argv.cloudflareToken}`;

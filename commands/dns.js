@@ -15,10 +15,10 @@ const { error, convertPageRulesToRedirects,
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 /**
- * Mange the DNS records for [domain]
+ * Mange the DNS records for <domain>
  **/
-exports.command = 'dns [domain]';
-exports.describe = 'Mange the DNS records for [domain]';
+exports.command = 'dns <domain>';
+exports.describe = 'Mange the DNS records for <domain>';
 exports.builder = (yargs) => {
   yargs
   .option('export', {

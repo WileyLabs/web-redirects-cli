@@ -28,14 +28,16 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 /**
  * Check a [domain]'s settings and redirects
  **/
-exports.command = 'check [domain]';
-exports.describe = 'Check a [domain]\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
+exports.command = 'check <domain>';
+exports.describe = 'Check a <domain>\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
 exports.builder = (yargs) => {
   yargs
   .positional('domain', {
     type: 'string',
-    describe: 'a valid domain name'
-  });
+    describe: 'a valid domain name',
+    demandOption: true
+  })
+  .demandOption('configDir');
 };
 exports.handler = (argv) => {
   axios.defaults.headers.common['Authorization'] = `Bearer ${argv.cloudflareToken}`;

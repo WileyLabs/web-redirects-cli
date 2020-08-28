@@ -18,7 +18,6 @@ require('yargs')
   .option('configDir', {
     type: 'string',
     describe: 'directory containing the `.settings.yaml` default configuration (WR_CONFIG_DIR)',
-    default: '.',
     coerce(v) {
       return {
         name: v,
