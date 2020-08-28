@@ -85,7 +85,7 @@ exports.handler = (argv) => {
                                                  argv.configDir.name,
                                                  `${zone.name}.${argv.format}`);
                   let formatForOutput = argv.format === 'json'
-                    ? JSON.stringify
+                    ? (o) => JSON.stringify(o, null, 2)
                     : YAML.safeDump;
                   // TODO: also check for file in the alternate format (so we don't get dupes)
                   if (fs.existsSync(redir_filepath)) {
