@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+/**
+ * @copyright 2020 John Wiley & Sons, Inc.
+ * @license MIT
+ **/
+
 const fs = require('fs');
 
 /**
