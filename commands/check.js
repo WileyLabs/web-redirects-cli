@@ -97,7 +97,7 @@ exports.handler = (argv) => {
                                     {items: convertToIdValueObjectArray(updates)})
                           .then((resp) => {
                             if (resp.data.success) {
-                              console.log('Success! The settings have been updated.');
+                              console.log(chalk.green('Success! The settings have been updated.'));
                             }
                           }).catch((err) => {
                             if ('response' in err
