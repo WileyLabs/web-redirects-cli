@@ -83,16 +83,16 @@ exports.handler = (argv) => {
                 error('The current DNS records will not work with the current Page Rules.');
 
                 warn('At least these DNS records MUST be added:');
-                const needed_a_records_table = new SimpleTable();
-                needed_a_records_table.header('Type', 'Name', 'Content', 'TTL', 'Proxy Status');
+                const needed_records_table = new SimpleTable();
+                needed_records_table.header('Type', 'Name', 'Content', 'TTL', 'Proxy Status');
                 if (required_dns_records.length > 0) {
                   required_dns_records.forEach((record) => {
-                    needed_a_records_table.row(record.type, record.name,
-                                               record.content, record.ttl,
-                                               record.proxied);
+                    needed_records_table.row(record.type, record.name,
+                                             record.content, record.ttl,
+                                             record.proxied);
                   });
                 }
-                console.log(needed_a_records_table.toString());
+                console.log(needed_records_table.toString());
               } else {
                 console.log(chalk.green('Congrats! Page Rules should all work as expected.'));
               }
