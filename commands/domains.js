@@ -120,6 +120,12 @@ exports.handler = (argv) => {
                             .then((resp) => {
                               if (resp.data.success) {
                                 let zone_id = resp.data.result.id;
+                                // update domain to zone_id map in local database
+                                const db = level(`${process.cwd()}/.cache-db`);
+                                db.put(domain, zone_id)
+                                  .catch(console.error);
+                                db.close();
+
                                 console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
 
                                 // now let's add the page rules
