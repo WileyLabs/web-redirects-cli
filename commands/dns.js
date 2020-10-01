@@ -14,7 +14,8 @@ const level = require('level');
 const YAML = require('js-yaml');
 
 const { error, buildRequiredDNSRecordsForPagerules, convertPageRulesToRedirects,
-  hasDNSRecord, outputDNSRecordsTable, outputPageRulesAsText,
+  createTheseDNSRecords, deleteTheseDNSRecords, hasDNSRecord,
+  hasConflictingDNSRecord, outputDNSRecordsTable, outputPageRulesAsText,
   warn } = require('../lib/shared.js');
 
 // foundational HTTP setup to Cloudflare's API
@@ -62,6 +63,7 @@ exports.handler = (argv) => {
 
             if (dns_records.length > 0) {
               const properly_proxied = [];
+              const conflicts = [];
               console.log(chalk.bold('Current DNS records:'));
               const table = new SimpleTable();
               table.header('Type', 'Name', 'Content', 'TTL', 'Proxy Status');
@@ -69,8 +71,11 @@ exports.handler = (argv) => {
                 const line_array = [line.type, line.name, line.content, line.ttl,
                   line.proxied ? chalk.keyword('orange')(line.proxied) : line.proxied];
                 if (hasDNSRecord(required_dns_records, line)) {
-                  properly_proxied.push(line_array);
+                  properly_proxied.push(line);
                   table.row(...line_array.map((i) => chalk.green(i)));
+                } else if (hasConflictingDNSRecord(required_dns_records, line)) {
+                  conflicts.push(line);
+                  table.row(...line_array.map((i) => chalk.keyword('orange')(i)));
                 } else {
                   table.row(...line_array.map((i) => chalk.white(i)));
                 }
@@ -80,13 +85,45 @@ exports.handler = (argv) => {
               output_array.splice(1,1);
               console.log(output_array.join('\n'));
               console.log()
-              if (properly_proxied.length === 0) {
+              if (properly_proxied.length === 0 || conflicts.length > 0) {
                 error('The current DNS records will not work with the current Page Rules.');
 
                 warn('At least these DNS records MUST be added:');
                 outputDNSRecordsTable(required_dns_records);
+
+                inquirer.prompt({
+                  type: 'list',
+                  name: 'whichApproach',
+                  message: `How do you want to add these DNS records?`,
+                  choices: [
+                    {name: `Replace ${chalk.bold('only')} the required ones.`, value: 'required'},
+                    {name: `Replace them ${chalk.bold('all')}`, value: 'all'},
+                    {name: 'Do nothing at this time.', value: 'skip'}
+                  ]
+                }).then((answers) => {
+                  switch(answers.whichApproach) {
+                    case 'all':
+                      // delete each of the existing DNS records
+                      deleteTheseDNSRecords(val, dns_records);
+                      console.log();
+                      createTheseDNSRecords(val, required_dns_records);
+                      break;
+                    case 'required':
+                      // delete the ones in the way
+                      deleteTheseDNSRecords(val, conflicts);
+                      console.log();
+                      // put in the new ones
+                      // TODO: remove any existing correct names before attempting this...
+                      // ...or handle the failure error case (400 status code)
+                      createTheseDNSRecords(val, required_dns_records);
+                      break;
+                    default:
+                      break;
+                  }
+                });
               } else {
                 console.log(chalk.green('Congrats! Page Rules should all work as expected.'));
+                outputDNSRecordsTable(required_dns_records);
               }
             } else {
               // there are no existing DNS records, so let's make the new ones
@@ -100,20 +137,7 @@ exports.handler = (argv) => {
                 default: false
               }).then((answers) => {
                 if (answers.confirmCreateIntent) {
-                  let promises = required_dns_records.map((r) => {
-                    return axios.post(`/zones/${val}/dns_records`, r);
-                  });
-                  Promise.all(promises)
-                    .then((results) => {
-                      results.forEach((r) => {
-                        if (r.status === 200) {
-                          let rec = r.data.result;
-                          // TODO: make this a table
-                          console.log(chalk.green(`${rec.name} ${r.type} ${r.content} was created successfully!`));
-                        }
-                      });
-                    })
-                    .catch(console.error);
+                  createTheseDNSRecords(val, required_dns_records);
                 }
               });
             }
