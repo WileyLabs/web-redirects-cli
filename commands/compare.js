@@ -8,6 +8,7 @@ const path = require('path');
 
 const axios = require('axios');
 const chalk = require('chalk');
+const { table, getBorderCharacters } = require('table');
 const { diff } = require('deep-object-diff');
 const inquirer = require('inquirer');
 const level = require('level');
@@ -81,60 +82,108 @@ exports.handler = (argv) => {
                 console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
               } else {
                 // compare descriptive redirect against current page rule(s)
-                let current_redirects = convertPageRulesToRedirects(pagerules);
+                let current = convertPageRulesToRedirects(pagerules);
                 let redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
-                let described_redirects = YAML.safeLoad(fs.readFileSync(redir_filepath));
-                let missing_redirs = diff(current_redirects, described_redirects.redirects);
-                // filter out missing `base` entries...
-                // if there's no from/to it's not an actual redir, just different JSON
-                // also converts missing_redirs to an array
-                missing_redirs = Object.values(missing_redirs)
-                  .filter((redir) => 'from' in redir && 'to' in redir);
-
-                if (Object.keys(missing_redirs).length > 0) {
-                  warn('These redirects are missing:');
-                  let missing_pagerules = [];
-                  missing_redirs.forEach((redir) => {
-                    missing_pagerules.push(convertRedirectToPageRule(redir, `*${zone.name}`));
+                let future = YAML.safeLoad(fs.readFileSync(redir_filepath)).redirects;
+                let missing = diff(current, future);
+                // base being undefined is not an error (as it's optional),
+                // so clean that out
+                // TODO: set the default pre-comparison?
+                if ('0' in missing && 'base' in missing['0'] && missing['0'].base === undefined) {
+                  delete missing['0'];
+                }
+                // modifications will be an object key'd by the pagerule ID
+                // and the value will contain the change to make
+                let modifications = {};
+                if (Object.keys(missing).length > 0) {
+                  console.log('Below are the missing redirects:');
+                  const diff_rows = [];
+                  diff_rows.push([chalk.bold('Current'), chalk.bold('Future'), chalk.bold('Difference')]);
+                  Object.keys(missing).forEach((i) => {
+                    if (current[i] === undefined) {
+                      // we've got a new rule
+                      diff_rows.push([chalk.green('none: will add ->'), YAML.safeDump(future[i]), '']);
+                      modifications[pagerules[i].id] = {
+                        method: 'post',
+                        pagerule: {
+                          status: 'active',
+                          ...convertRedirectToPageRule(future[i])
+                        }
+                      };
+                    } else if (future[i] === undefined) {
+                      diff_rows.push([YAML.safeDump(current[i]) || '',
+                                     chalk.red('<-- will remove'), '']);
+                      // mark the pagerule for deletion
+                      modifications[pagerules[i].id] = {method: 'delete'};
+                    } else {
+                      diff_rows.push([YAML.safeDump(current[i]) || '',
+                                      YAML.safeDump(future[i]) || '',
+                                      YAML.safeDump(missing[i]) || '']);
+                      // replace the current pagerule with the future one
+                      modifications[pagerules[i].id] = {
+                        method: 'put',
+                        pagerule: {
+                          status: 'active',
+                          ...convertRedirectToPageRule(future[i])
+                        }
+                      };
+                    }
                   });
-                  outputPageRulesAsText(missing_pagerules);
-                  console.log();
+                  console.log(table(diff_rows, {
+                    border: getBorderCharacters('void')
+                  }));
+
                   inquirer.prompt({
                     type: 'confirm',
                     name: 'confirmUpdates',
-                    message: `Update ${zone.name} to add the ${chalk.bold(Object.keys(missing_redirs).length)} redirects?`,
+                    message: `Update ${zone.name} to make the above modifications?`,
                     default: false,
                   }).then((answers) => {
-                    // TODO: handle each update separately
                     if (answers.confirmUpdates) {
-                      // add the first page rule (only) to this zone on Cloudflare
-                      axios.post(`/zones/${val}/pagerules`, {
-                          status: 'active',
-                          // splat in `targets` and `actions`
-                          ...missing_pagerules[0]
-                        })
-                        .then((resp) => {
-                          if (resp.data.success) {
-                            console.log(`Success! The following page rule has been created and enabled:`);
-                            outputPageRulesAsText([resp.data.result]);
-                          }
-                        })
-                        .catch((err) => {
-                          // TODO: handle errors better... >_<
-                          if ('response' in err
-                              && 'status' in err.response
-                              && err.response.status === 403) {
-                            error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
-                          } else {
-                            console.error(err);
-                          }
-                        });
-                      // tell the user to tweak permissions if it fails
+                      // TODO: switch this to use Promise.all?
+                      Object.keys(modifications).forEach((key) => {
+                        let mod = modifications[key];
+                        // post doesn't need an ID
+                        let url = modifications[key].method === 'post'
+                          ? `/zones/${val}/pagerules`
+                          : `/zones/${val}/pagerules/${key}`;
+                        axios[mod.method](url,
+                                          // delete doesn't need a body
+                                          mod.method === 'delete' ? {} : mod.pagerule)
+                          .then((resp) => {
+                            if (resp.data.success) {
+                              let msg = '';
+                              switch (mod.method) {
+                                case 'delete':
+                                  msg = `Page rule ${key} has been removed.`;
+                                  break;
+                                case 'post':
+                                  msg = `The following page rule was created and enabled: ${outputPageRulesAsText([resp.data.result])}`;
+                                  break;
+                                case 'put':
+                                  msg = `Page rule ${key} has been updated: ${outputPageRulesAsText([resp.data.result])}`;
+                                  break;
+                                default:
+                                  break;
+                              }
+                            }
+                          })
+                          .catch((err) => {
+                            // TODO: handle errors better... >_<
+                            if ('response' in err
+                                && 'status' in err.response
+                                && err.response.status === 403) {
+                              error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
+                            } else {
+                              console.error(err);
+                            }
+                          });
+                      });
+                      // TODO: tell the user to tweak permissions if it fails
                     }
                   });
                 } else {
                   console.log(`${chalk.bold.green('✓')} Current redirect descriptions match the preferred configuration.`);
-                  outputPageRulesAsText(pagerules);
                 }
               }
             }
