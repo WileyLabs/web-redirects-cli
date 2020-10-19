@@ -123,7 +123,6 @@ exports.handler = (argv) => {
                 });
               } else {
                 console.log(chalk.green('Congrats! Page Rules should all work as expected.'));
-                outputDNSRecordsTable(required_dns_records);
               }
             } else {
               // there are no existing DNS records, so let's make the new ones
