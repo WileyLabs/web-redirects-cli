@@ -14,8 +14,7 @@ const inquirer = require('inquirer');
 const level = require('level');
 const YAML = require('js-yaml');
 
-const { error, warn,
-  convertPageRulesToRedirects, convertRedirectToPageRule,
+const { error, convertPageRulesToRedirects, convertRedirectToPageRule,
   outputPageRulesAsText } = require('../lib/shared.js');
 
 function outputDifferences(updates, current, level = 0) {
@@ -166,6 +165,7 @@ exports.handler = (argv) => {
                                 default:
                                   break;
                               }
+                              console.log(msg);
                             }
                           })
                           .catch((err) => {
