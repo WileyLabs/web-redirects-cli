@@ -19,21 +19,6 @@ const {
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
-// check if local redirect description exists
-function findDescription(domain, dir) {
-  // create file path for both available formats
-  const redir_filepath_json = path.join(process.cwd(), dir, `${domain}.json`);
-  const redir_filepath_yaml = path.join(process.cwd(), dir, `${domain}.yaml`);
-  // check if file exists
-  if (fs.existsSync(redir_filepath_json)) {
-    return path.relative(process.cwd(), redir_filepath_json);
-  }
-  if (fs.existsSync(redir_filepath_yaml)) {
-    return path.relative(process.cwd(), redir_filepath_yaml);
-  }
-  return false;
-}
-
 // now loop through each domain and offer to create it and add redirs
 function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) {
   if (domains_to_add.length === 0) return;
@@ -159,12 +144,6 @@ exports.handler = (argv) => {
         console.log(`
   ${chalk.bold(zone.name)} - ${zone.id} in ${zone.account.name}
   ${zone.status === 'active' ? chalk.green('✓') : chalk.blue('🕓')} ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.`);
-        if ('configDir' in argv) {
-          const description_file = findDescription(zone.name, argv.configDir.name);
-          if (description_file) {
-            console.log(chalk.keyword('purple')(`  Redirect description exists: ${description_file}`));
-          }
-        }
         if (zone.status === 'pending') {
           console.log(chalk.keyword('lightblue')(`  Update the nameservers to: ${zone.name_servers.join(', ')}`));
         }
