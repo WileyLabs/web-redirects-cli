@@ -35,10 +35,10 @@ function findDescription(domain, dir) {
 }
 
 // now loop through each domain and offer to create it and add redirs
-function confirmDomainAdditions(domains_to_add) {
+function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) {
   if (domains_to_add.length === 0) return;
-  let filename = domains_to_add.shift();
-  let domain = filename.substr(0, filename.length-5);
+  const filename = domains_to_add.shift();
+  const domain = filename.substr(0, filename.length - 5);
   inquirer.prompt({
     type: 'confirm',
     name: 'confirmCreate',
@@ -47,13 +47,13 @@ function confirmDomainAdditions(domains_to_add) {
   }).then((answers) => {
     if (answers.confirmCreate) {
       axios.post('/zones', {
-          name: domain,
-          account: {id: account_id},
-          jump_start: true
-        })
+        name: domain,
+        account: { id: account_id },
+        jump_start: true
+      })
         .then((resp) => {
           if (resp.data.success) {
-            let zone_id = resp.data.result.id;
+            const zone_id = resp.data.result.id;
             // update domain to zone_id map in local database
             const db = level(`${process.cwd()}/.cache-db`);
             db.put(domain, zone_id)
@@ -63,32 +63,34 @@ function confirmDomainAdditions(domains_to_add) {
             console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
 
             // now let's add the page rules
-            let redir_filepath = path.join(process.cwd(),
-                                           argv.configDir.name,
-                                           filename);
+            const redir_filepath = path.join(process.cwd(),
+              argv.configDir.name,
+              filename);
             try {
-              let description = YAML.safeLoad(fs.readFileSync((redir_filepath)));
+              const description = YAML.safeLoad(fs.readFileSync((redir_filepath)));
               description.redirects.forEach((redir) => {
-                let pagerule = convertRedirectToPageRule(redir, `*${domain}`);
-                console.log(`Does this Page Rule look OK?`);
+                const pagerule = convertRedirectToPageRule(redir, `*${domain}`);
+                console.log('Does this Page Rule look OK?');
                 outputPageRulesAsText([pagerule]);
                 inquirer.prompt({
                   type: 'confirm',
                   name: 'proceed',
                   message: 'Shall we continue?',
                   default: true
-                }).then((answers) => {
-                  if (answers.proceed) {
+                }).then(({ proceed }) => {
+                  if (proceed) {
                     axios.post(`/zones/${zone_id}/pagerules`, {
-                        status: 'active',
-                        // splat in `targets` and `actions`
-                        ...pagerule
-                      })
-                      .then((resp) => {
-                        if (resp.data.success) {
+                      status: 'active',
+                      // splat in `targets` and `actions`
+                      ...pagerule
+                    })
+                      .then(({ data }) => {
+                        if (data.success) {
                           console.log('Page rule successfully created!');
-                          outputPageRulesAsText(Array.isArray(resp.data.result) ? resp.data.result : [resp.data.result]);
-                          confirmDomainAdditions(domains_to_add);
+                          outputPageRulesAsText(Array.isArray(data.result)
+                            ? data.result
+                            : [data.result]);
+                          confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
                         }
                       })
                       .catch((err) => {
@@ -96,19 +98,19 @@ function confirmDomainAdditions(domains_to_add) {
                         if ('response' in err
                             && 'status' in err.response
                             && err.response.status >= 400) {
-                              let data = err.response.data;
-                              if (data.errors.length > 0) {
-                                // collect error/message combos and display those
-                                for (let i = 0; i < data.errors.length; i++) {
-                                  error(data.errors[i].message.split(':')[0]);
-                                  warn(data.messages[i].message.split(':')[1]);
-                                }
-                              } else {
-                                // assume we have something...else...
-                                console.dir(data, {depth: 5});
-                              }
+                          const { data } = err.response;
+                          if (data.errors.length > 0) {
+                            // collect error/message combos and display those
+                            for (let i = 0; i < data.errors.length; i += 1) {
+                              error(data.errors[i].message.split(':')[0]);
+                              warn(data.messages[i].message.split(':')[1]);
+                            }
+                          } else {
+                            // assume we have something...else...
+                            console.dir(data, { depth: 5 });
+                          }
                         } else {
-                          console.dir(err, {depth: 5});
+                          console.dir(err, { depth: 5 });
                         }
                       });
                   }
@@ -131,11 +133,10 @@ function confirmDomainAdditions(domains_to_add) {
         });
     } else {
       // no on the current one, but let's keep going
-      confirmDomainAdditions(domains_to_add);
+      confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
     }
   });
 }
-
 
 /**
  * Lists available Zones/Sites in Cloudflare
@@ -195,15 +196,16 @@ exports.handler = (argv) => {
               // first, confirm which Cloudflare account (there should only be one)
               // ...so for now we just grab the first one...
               axios.get('/accounts')
-                .then((resp) => {
-                  if (resp.data.success) {
-                    const account_name = resp.data.result[0].name;
+                .then((accounts_resp) => {
+                  if (accounts_resp.data.success) {
+                    const account_id = accounts_resp.data.result[0].id;
+                    const account_name = accounts_resp.data.result[0].name;
                     // TODO: get confirmation on the account found?
                     console.log(`We'll be adding these to ${account_name}.`);
 
                     // recursive function that will add each in sequence (based
                     // on positive responses of course)
-                    confirmDomainAdditions(missing);
+                    confirmDomainAdditions(missing, account_name, account_id, argv);
                   }
                 })
                 .catch((err) => {
