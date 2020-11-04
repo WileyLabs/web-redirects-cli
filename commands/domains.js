@@ -133,19 +133,44 @@ exports.handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   axios.get('/zones')
     .then((resp) => {
+      const all_zones = [];
+      resp.data.result.forEach((zone) => {
+        all_zones.push(zone);
+      });
+      if ('result_info' in resp.data) {
+        const { per_page, total_count, total_pages } = resp.data.result_info;
+
+        const possible_pages = total_count / per_page;
+
+        if (possible_pages > 1) {
+          // get the rest of the pages in one go
+          const promises = [...Array(total_pages - 1).keys()]
+            .map((i) => axios.get(`/zones?page=${i + 2}`));
+          return Promise.all(promises)
+            .then((results) => {
+              results.forEach((r) => {
+                if (r.status === 200) {
+                  r.data.result.forEach((zone) => {
+                    all_zones.push(zone);
+                  });
+                }
+              });
+              return all_zones;
+            });
+        }
+      }
+      return all_zones;
+    })
+    .then((all_zones) => {
       // setup a local level store for key/values (mostly)
       const db = level(`${process.cwd()}/.cache-db`);
 
-      console.log(`${chalk.bold(resp.data.result.length)} Zones:`);
+      console.log(`${chalk.bold(all_zones.length)} Zones:`);
       // loop through the returned zones and store a domain => id mapping
-      const zone_names = [];
-      resp.data.result.forEach((zone) => {
-        zone_names.push(zone.name);
-        console.log(`
-  ${chalk.bold(zone.name)} - ${zone.id} in ${zone.account.name}
-  ${zone.status === 'active' ? chalk.green('✓') : chalk.blue('🕓')} ${chalk.green(zone.plan.name)} - ${zone.meta.page_rule_quota} Page Rules available.`);
+      all_zones.forEach((zone) => {
+        console.log(`${zone.status === 'active' ? chalk.green('✓ ') : chalk.blue('🕓')} ${chalk.bold(zone.name)} - ${chalk[zone.plan.name === 'Enterprise Website' ? 'red' : 'green'](zone.plan.name)}`);
         if (zone.status === 'pending') {
-          console.log(chalk.keyword('lightblue')(`  Update the nameservers to: ${zone.name_servers.join(', ')}`));
+          console.log(chalk.keyword('lightblue')(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
         }
         db.put(zone.name, zone.id)
           .catch(console.error);
@@ -155,7 +180,7 @@ exports.handler = (argv) => {
       if ('configDir' in argv) {
         // list any redirect descriptions available which do not appear in Cloudflare
         const missing = argv.configDir.contents.filter((filename) => filename[0] !== '.'
-            && zone_names.indexOf(filename.substr(0, filename.length - 5)) === -1);
+            && all_zones.find((z) => z.name === path.parse(filename).name) === undefined);
 
         if (missing.length > 0) {
           console.log(`\nThe following ${chalk.bold(missing.length)} domains are not yet in Cloudflare:`);
