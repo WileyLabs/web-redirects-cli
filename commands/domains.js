@@ -23,36 +23,45 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) {
   if (domains_to_add.length === 0) return;
   const filename = domains_to_add.shift();
-  const domain = filename.substr(0, filename.length - 5);
-  inquirer.prompt({
-    type: 'confirm',
-    name: 'confirmCreate',
-    message: `Add ${domain} to ${account_name}?`,
-    default: false
-  }).then((answers) => {
-    if (answers.confirmCreate) {
-      axios.post('/zones', {
-        name: domain,
-        account: { id: account_id },
-        jump_start: true
-      })
-        .then((resp) => {
-          if (resp.data.success) {
-            const zone_id = resp.data.result.id;
-            // update domain to zone_id map in local database
-            const db = level(`${process.cwd()}/.cache-db`);
-            db.put(domain, zone_id)
-              .catch(console.error);
-            db.close();
+  const domain = path.parse(filename).name;
 
-            console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
+  const redir_filepath = path.join(process.cwd(),
+    argv.configDir.name,
+    filename);
 
-            // now let's add the page rules
-            const redir_filepath = path.join(process.cwd(),
-              argv.configDir.name,
-              filename);
-            try {
-              const description = YAML.safeLoad(fs.readFileSync((redir_filepath)));
+  let description = '';
+  try {
+    description = YAML.safeLoad(fs.readFileSync((redir_filepath)));
+  } catch (err) {
+    console.error(chalk.red(`${err.name}: ${err.reason}`));
+    console.log(`Skipping ${domain} for now.`);
+    confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
+  }
+
+  if (description !== '') {
+    inquirer.prompt({
+      type: 'confirm',
+      name: 'confirmCreate',
+      message: `Add ${domain} to ${account_name}?`,
+      default: false
+    }).then((answers) => {
+      if (answers.confirmCreate) {
+        axios.post('/zones', {
+          name: domain,
+          account: { id: account_id },
+          jump_start: true
+        })
+          .then((resp) => {
+            if (resp.data.success) {
+              const zone_id = resp.data.result.id;
+              // update domain to zone_id map in local database
+              const db = level(`${process.cwd()}/.cache-db`);
+              db.put(domain, zone_id)
+                .catch(console.error);
+              db.close();
+
+              console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
+
               description.redirects.forEach((redir) => {
                 const pagerule = convertRedirectToPageRule(redir, `*${domain}`);
                 console.log('Does this Page Rule look OK?');
@@ -101,26 +110,24 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   }
                 });
               });
-            } catch (err) {
+            }
+          })
+          .catch((err) => {
+            // TODO: handle errors better... >_<
+            if ('response' in err
+                && 'status' in err.response
+                && err.response.status === 403) {
+              error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
+            } else {
               console.error(err);
             }
-          }
-        })
-        .catch((err) => {
-          // TODO: handle errors better... >_<
-          if ('response' in err
-              && 'status' in err.response
-              && err.response.status === 403) {
-            error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
-          } else {
-            console.error(err);
-          }
-        });
-    } else {
-      // no on the current one, but let's keep going
-      confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
-    }
-  });
+          });
+      } else {
+        // no on the current one, but let's keep going
+        confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
+      }
+    });
+  }
 }
 
 /**
