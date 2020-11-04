@@ -131,7 +131,7 @@ exports.describe = 'List domains in the current Cloudflare account';
 // exports.builder = (yargs) => {};
 exports.handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
-  axios.get('/zones')
+  axios.get('/zones?per_page=50')
     .then((resp) => {
       const all_zones = [];
       resp.data.result.forEach((zone) => {
@@ -145,7 +145,7 @@ exports.handler = (argv) => {
         if (possible_pages > 1) {
           // get the rest of the pages in one go
           const promises = [...Array(total_pages - 1).keys()]
-            .map((i) => axios.get(`/zones?page=${i + 2}`));
+            .map((i) => axios.get(`/zones?per_page=50&page=${i + 2}`));
           return Promise.all(promises)
             .then((results) => {
               results.forEach((r) => {
