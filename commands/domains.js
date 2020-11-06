@@ -13,11 +13,38 @@ const level = require('level');
 const YAML = require('js-yaml');
 
 const {
-  convertRedirectToPageRule, error, outputPageRulesAsText, warn
+  convertRedirectToPageRule, convertToIdValueObjectArray, error,
+  outputPageRulesAsText, warn
 } = require('../lib/shared.js');
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
+
+// load the `.settings.yaml` file for secuirty defaults
+function setSecuritySettings(argv, zone_id) {
+  const settings_path = path.join(process.cwd(), argv.configDir.name,
+    '.settings.yaml');
+  try {
+    const settings = YAML.safeLoad(fs.readFileSync(settings_path));
+    axios.patch(`/zones/${zone_id}/settings`,
+      { items: convertToIdValueObjectArray(settings) })
+      .then((resp) => {
+        if (resp.data.success) {
+          console.log(chalk.green('Success! The settings have been updated.'));
+        }
+      }).catch((err) => {
+        if ('response' in err
+            && 'status' in err.response
+            && err.response.status === 403) {
+          error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
+        } else {
+          console.error(err);
+        }
+      });
+  } catch (e) {
+    console.error(e);
+  }
+}
 
 // now loop through each domain and offer to create it and add redirs
 function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) {
@@ -61,6 +88,9 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               db.close();
 
               console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
+
+              // set the security settings to the defaults
+              setSecuritySettings(argv, zone_id);
 
               description.redirects.forEach((redir) => {
                 const pagerule = convertRedirectToPageRule(redir, `*${domain}`);
