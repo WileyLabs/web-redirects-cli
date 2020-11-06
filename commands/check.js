@@ -52,13 +52,13 @@ exports.handler = (argv) => {
     const db = level(`${process.cwd()}/.cache-db`);
 
     db.get(argv.domain)
-      .then((val) => {
+      .then((zone_id) => {
         // read redirect config file for domain
         // gather zone/domain information from Cloudflare
         Promise.all([
-          axios.get(`/zones/${val}`),
-          axios.get(`/zones/${val}/pagerules`),
-          axios.get(`/zones/${val}/settings`)
+          axios.get(`/zones/${zone_id}`),
+          axios.get(`/zones/${zone_id}/pagerules`),
+          axios.get(`/zones/${zone_id}/settings`)
         ]).then((results) => {
           const [zone, pagerules, settings] = results.map((resp) => resp.data.result);
 
@@ -89,7 +89,7 @@ exports.handler = (argv) => {
                   default: false
                 }).then((answers) => {
                   if (answers.confirmUpdates) {
-                    axios.patch(`/zones/${val}/settings`,
+                    axios.patch(`/zones/${zone_id}/settings`,
                       { items: convertToIdValueObjectArray(updates) })
                       .then((resp) => {
                         if (resp.data.success) {

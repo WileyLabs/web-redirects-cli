@@ -52,10 +52,10 @@ exports.handler = (argv) => {
     const db = level(`${process.cwd()}/.cache-db`);
 
     db.get(argv.domain)
-      .then((val) => {
+      .then((zone_id) => {
         Promise.all([
-          axios.get(`/zones/${val}`),
-          axios.get(`/zones/${val}/pagerules`)
+          axios.get(`/zones/${zone_id}`),
+          axios.get(`/zones/${zone_id}/pagerules`)
         ])
           .then((results) => {
             let [zone, pagerules] = results.map((resp) => {
@@ -66,7 +66,7 @@ exports.handler = (argv) => {
               case 'text':
                 if (!argv.export) {
                   console.log(
-  `Current redirects for ${argv.domain} (${val}):
+  `Current redirects for ${argv.domain} (${zone_id}):
   Zone Info:
     ${chalk.bold(zone.name)} - ${zone.id}
     ${chalk.green(zone.plan.name)} - ${pagerules.length} of ${zone.meta.page_rule_quota} Page Rules used.

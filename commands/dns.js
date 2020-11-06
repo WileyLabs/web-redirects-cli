@@ -45,10 +45,10 @@ exports.handler = (argv) => {
     const db = level(`${process.cwd()}/.cache-db`);
 
     db.get(argv.domain)
-      .then((val) => {
+      .then((zone_id) => {
         Promise.all([
-          axios.get(`/zones/${val}/dns_records`),
-          axios.get(`/zones/${val}/pagerules`)
+          axios.get(`/zones/${zone_id}/dns_records`),
+          axios.get(`/zones/${zone_id}/pagerules`)
         ]).then((results) => {
           const [dns_records, pagerules] = results.map((resp) => {
             if (resp.data.success) {
@@ -104,18 +104,18 @@ exports.handler = (argv) => {
                 switch (answers.whichApproach) {
                   case 'all':
                     // delete each of the existing DNS records
-                    deleteTheseDNSRecords(val, dns_records);
+                    deleteTheseDNSRecords(zone_id, dns_records);
                     console.log();
-                    createTheseDNSRecords(val, required_dns_records);
+                    createTheseDNSRecords(zone_id, required_dns_records);
                     break;
                   case 'required':
                     // delete the ones in the way
-                    deleteTheseDNSRecords(val, conflicts);
+                    deleteTheseDNSRecords(zone_id, conflicts);
                     console.log();
                     // put in the new ones
                     // TODO: remove any existing correct names before attempting this...
                     // ...or handle the failure error case (400 status code)
-                    createTheseDNSRecords(val, required_dns_records);
+                    createTheseDNSRecords(zone_id, required_dns_records);
                     break;
                   default:
                     break;
@@ -136,7 +136,7 @@ exports.handler = (argv) => {
               default: false
             }).then((answers) => {
               if (answers.confirmCreateIntent) {
-                createTheseDNSRecords(val, required_dns_records);
+                createTheseDNSRecords(zone_id, required_dns_records);
               }
             });
           }

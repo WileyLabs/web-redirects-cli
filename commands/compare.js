@@ -46,12 +46,12 @@ exports.handler = (argv) => {
     const db = level(`${process.cwd()}/.cache-db`);
 
     db.get(argv.domain)
-      .then((val) => {
+      .then((zone_id) => {
         // read redirect config file for domain
         // gather zone/domain information from Cloudflare
         Promise.all([
-          axios.get(`/zones/${val}`),
-          axios.get(`/zones/${val}/pagerules`)
+          axios.get(`/zones/${zone_id}`),
+          axios.get(`/zones/${zone_id}/pagerules`)
         ]).then((results) => {
           const [zone, pagerules] = results.map((resp) => resp.data.result);
 
@@ -132,8 +132,8 @@ exports.handler = (argv) => {
                       const mod = modifications[key];
                       // post doesn't need an ID
                       const url = modifications[key].method === 'post'
-                        ? `/zones/${val}/pagerules`
-                        : `/zones/${val}/pagerules/${key}`;
+                        ? `/zones/${zone_id}/pagerules`
+                        : `/zones/${zone_id}/pagerules/${key}`;
                       axios[mod.method](url,
                         // delete doesn't need a body
                         mod.method === 'delete' ? {} : mod.pagerule)
