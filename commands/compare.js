@@ -12,6 +12,7 @@ const { table, getBorderCharacters } = require('table');
 const { diff } = require('deep-object-diff');
 const inquirer = require('inquirer');
 const level = require('level');
+const uuid = require('uuid');
 const YAML = require('js-yaml');
 
 const {
@@ -90,11 +91,11 @@ exports.handler = (argv) => {
                   if (current[i] === undefined) {
                     // we've got a new rule
                     diff_rows.push([chalk.green('none: will add ->'), YAML.safeDump(future[i]), '']);
-                    modifications[pagerules[i].id] = {
+                    modifications[uuid.v4()] = {
                       method: 'post',
                       pagerule: {
                         status: 'active',
-                        ...convertRedirectToPageRule(future[i])
+                        ...convertRedirectToPageRule(future[i], `*${zone.name}`)
                       }
                     };
                   } else if (future[i] === undefined) {
@@ -111,7 +112,7 @@ exports.handler = (argv) => {
                       method: 'put',
                       pagerule: {
                         status: 'active',
-                        ...convertRedirectToPageRule(future[i])
+                        ...convertRedirectToPageRule(future[i], `*${zone.name}`)
                       }
                     };
                   }
