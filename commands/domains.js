@@ -214,7 +214,10 @@ exports.handler = (argv) => {
       });
       db.close();
 
-      if ('configDir' in argv) {
+      if (!('configDir' in argv)) {
+        console.log();
+        console.log('Set --configDir (or WR_CONFIG_DIR) to manage new descriptions.');
+      } else {
         // list any redirect descriptions available which do not appear in Cloudflare
         const missing = argv.configDir.contents.filter((filename) => filename[0] !== '.'
             && all_zones.find((z) => z.name === path.parse(filename).name) === undefined);
