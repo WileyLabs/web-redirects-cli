@@ -22,17 +22,14 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 // load the `.settings.yaml` file for secuirty defaults
 function setSecuritySettings(argv, zone_id) {
+  console.log(chalk.gray('  Setting security settings...'));
   const settings_path = path.join(process.cwd(), argv.configDir.name,
     '.settings.yaml');
   try {
     const settings = YAML.safeLoad(fs.readFileSync(settings_path));
     axios.patch(`/zones/${zone_id}/settings`,
       { items: convertToIdValueObjectArray(settings) })
-      .then((resp) => {
-        if (resp.data.success) {
-          console.log(chalk.green('Success! The settings have been updated.'));
-        }
-      }).catch((err) => {
+      .catch((err) => {
         if ('response' in err
             && 'status' in err.response
             && err.response.status === 403) {
@@ -73,6 +70,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
       default: false
     }).then((answers) => {
       if (answers.confirmCreate) {
+        console.log(chalk.gray('  Creating the zone...'));
         axios.post('/zones', {
           name: domain,
           account: { id: account_id },
@@ -87,14 +85,18 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                 .catch(console.error);
               db.close();
 
-              console.log(`${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
+              console.log(`  ${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
 
               // set the security settings to the defaults
               setSecuritySettings(argv, zone_id);
 
+              // TODO: we need to wait until the security settings are complete before we continue
+              // TODO: we should do all the redirect display in one go,
+              // and get confirmation on the lot of them...not one at a time
               description.redirects.forEach((redir) => {
                 const pagerule = convertRedirectToPageRule(redir, `*${domain}`);
-                console.log('Does this Page Rule look OK?');
+                console.log();
+                console.log('  Does this Page Rule look OK?');
                 outputPageRulesAsText([pagerule]);
                 inquirer.prompt({
                   type: 'confirm',
@@ -110,10 +112,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                     })
                       .then(({ data }) => {
                         if (data.success) {
-                          console.log('Page rule successfully created!');
-                          outputPageRulesAsText(Array.isArray(data.result)
-                            ? data.result
-                            : [data.result]);
+                          console.log('  Page rule successfully created!');
                           confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
                         }
                       })
@@ -149,7 +148,8 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                 && err.response.status === 403) {
               error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
             } else {
-              console.error(err);
+              console.error(`${err.response.status} ${err.response.statusText}`);
+              console.error(err.response.data);
             }
           });
       } else {
