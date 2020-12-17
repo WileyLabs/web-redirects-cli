@@ -32,6 +32,8 @@ require('yargs')
       };
     }
   })
+  // Describe a redirect as a YAML file
+  .command(require('./commands/describe.js'))
   // List zones in current Cloudflare account
   .command(require('./commands/domains.js'))
   // Show current redirects for [domain]
