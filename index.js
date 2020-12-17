@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 
+/* eslint-disable no-unused-expressions */
+
 /**
  * @copyright 2020 John Wiley & Sons, Inc.
  * @license MIT
- **/
+ */
 
 const fs = require('fs');
 
 /**
  * Command handler of awesomeness.
- **/
+ */
 require('yargs')
   .scriptName('redirects')
   .env('WR')
