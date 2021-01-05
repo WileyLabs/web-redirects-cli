@@ -74,12 +74,14 @@ exports.handler = (argv) => {
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
               const future = YAML.safeLoad(fs.readFileSync(redir_filepath)).redirects;
               const missing = diff(current, future);
-              // base being undefined is not an error (as it's optional),
-              // so clean that out
-              // TODO: set the default pre-comparison?
-              if ('0' in missing && 'base' in missing['0'] && missing['0'].base === undefined) {
-                delete missing['0'];
-              }
+              // `base` or `status` being undefined is not an error (as they
+              // are optional), so clean that out
+              Object.keys(missing).forEach((i) => {
+                if (missing[i].base === undefined) delete missing[i].base;
+                if (missing[i].status === undefined) delete missing[i].status;
+                // if we've removed everything of meaning, then dump the remains
+                if (Object.keys(missing[i]).length === 0) delete missing[i];
+              });
               // modifications will be an object key'd by the pagerule ID
               // and the value will contain the change to make
               const modifications = {};
@@ -104,6 +106,7 @@ exports.handler = (argv) => {
                     // mark the pagerule for deletion
                     modifications[pagerules[i].id] = { method: 'delete' };
                   } else {
+                    // we've got a modification
                     diff_rows.push([YAML.safeDump(current[i]) || '',
                       YAML.safeDump(future[i]) || '',
                       YAML.safeDump(missing[i]) || '']);
@@ -173,6 +176,7 @@ exports.handler = (argv) => {
                 });
               } else {
                 console.log(`${chalk.bold.green('✓')} Current redirect descriptions match the preferred configuration.`);
+                outputPageRulesAsText(pagerules);
               }
             }
           }
