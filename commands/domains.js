@@ -209,6 +209,12 @@ exports.handler = (argv) => {
         if (zone.status === 'pending') {
           console.log(chalk.keyword('lightblue')(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
         }
+        // output a warning if there is now local description
+        const redir_filename = argv.configDir.contents
+          .filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
+        if (undefined === redir_filename) {
+          console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
+        }
         db.put(zone.name, zone.id)
           .catch(console.error);
       });
