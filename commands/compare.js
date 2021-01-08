@@ -74,6 +74,7 @@ exports.handler = (argv) => {
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
               const future = YAML.safeLoad(fs.readFileSync(redir_filepath)).redirects;
               const missing = diff(current, future);
+
               // `base` or `status` being undefined is not an error (as they
               // are optional), so clean that out
               Object.keys(missing).forEach((i) => {
@@ -82,6 +83,7 @@ exports.handler = (argv) => {
                 // if we've removed everything of meaning, then dump the remains
                 if (Object.keys(missing[i]).length === 0) delete missing[i];
               });
+
               // modifications will be an object key'd by the pagerule ID
               // and the value will contain the change to make
               const modifications = {};
@@ -111,6 +113,8 @@ exports.handler = (argv) => {
                       YAML.safeDump(future[i]) || '',
                       YAML.safeDump(missing[i]) || '']);
                     // replace the current pagerule with the future one
+                    // TODO: this doesn't work for reordering...we have to
+                    // match rules and change the `priority` value of each
                     modifications[pagerules[i].id] = {
                       method: 'put',
                       pagerule: {
@@ -172,9 +176,14 @@ exports.handler = (argv) => {
                         .catch((err) => {
                           // TODO: handle errors better... >_<
                           if ('response' in err
-                              && 'status' in err.response
-                              && err.response.status === 403) {
-                            error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
+                              && 'status' in err.response) {
+                            if (err.response.status === 403) {
+                              error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
+                            } else if (err.response.status === 400) {
+                              console.dir(err.response.data);
+                            } else {
+                              console.error(err);
+                            }
                           } else {
                             console.error(err);
                           }
