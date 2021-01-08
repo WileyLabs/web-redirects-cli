@@ -124,6 +124,15 @@ exports.handler = (argv) => {
                   border: getBorderCharacters('void')
                 }));
 
+                const available_pagerules = zone.meta.page_rule_quota;
+                // count the new redirects
+                const new_redirs = Object.values(modifications)
+                  .filter((m) => m.method === 'post').length;
+
+                if (available_pagerules < new_redirs) {
+                  console.error('Sorry...there aren\'t enough pagerules.');
+                }
+
                 inquirer.prompt({
                   type: 'confirm',
                   name: 'confirmUpdates',
