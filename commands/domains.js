@@ -13,8 +13,13 @@ const level = require('level');
 const YAML = require('js-yaml');
 
 const {
-  convertRedirectToPageRule, convertToIdValueObjectArray, error,
-  outputPageRulesAsText, warn
+  convertRedirectToPageRule,
+  convertToIdValueObjectArray,
+  createTheseDNSRecords,
+  buildRequiredDNSRecordsForPagerules,
+  error,
+  outputPageRulesAsText,
+  warn
 } = require('../lib/shared.js');
 
 // foundational HTTP setup to Cloudflare's API
@@ -93,8 +98,8 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               // TODO: we need to wait until the security settings are complete before we continue
               // TODO: we should do all the redirect display in one go,
               // and get confirmation on the lot of them...not one at a time
-              description.redirects.forEach((redir) => {
-                const pagerule = convertRedirectToPageRule(redir, `*${domain}`);
+              const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
+              pagerules.forEach((pagerule) => {
                 console.log();
                 console.log('  Does this Page Rule look OK?');
                 outputPageRulesAsText([pagerule]);
@@ -139,6 +144,8 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   }
                 });
               });
+
+              createTheseDNSRecords(zone_id, buildRequiredDNSRecordsForPagerules(pagerules));
             }
           })
           .catch((err) => {
@@ -273,7 +280,7 @@ exports.handler = (argv) => {
 
                   // recursive function that will add each in sequence (based
                   // on positive responses of course)
-                  confirmDomainAdditions(missing_zones, account_name, account_id, argv);
+                  confirmDomainAdditions(described_but_no_zone, account_name, account_id, argv);
                 }
               })
               .catch((err) => {
