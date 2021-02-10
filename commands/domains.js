@@ -209,7 +209,7 @@ exports.handler = (argv) => {
         if (zone.status === 'pending') {
           console.log(chalk.keyword('lightblue')(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
         }
-        // output a warning if there is now local description
+        // output a warning if there is no local description
         const redir_filename = argv.configDir.contents
           .filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
         if (undefined === redir_filename) {
@@ -220,51 +220,46 @@ exports.handler = (argv) => {
       });
       db.close();
 
-      if (!('configDir' in argv)) {
+      // list any redirect descriptions available which do not appear in Cloudflare
+      const missing = argv.configDir.contents.filter((filename) => filename[0] !== '.'
+          && all_zones.find((z) => z.name === path.parse(filename).name) === undefined);
+
+      if (missing.length > 0) {
+        console.log(`\nThe following ${chalk.bold(missing.length)} domains are not yet in Cloudflare:`);
+        missing.forEach((li) => {
+          console.log(` - ${li.substr(0, li.length - 5)} (see ${path.join(argv.configDir.name, li)})`);
+        });
+
+        // ask if the user is ready to create the above missing zones
         console.log();
-        console.log('Set --configDir (or WR_CONFIG_DIR) to manage new descriptions.');
-      } else {
-        // list any redirect descriptions available which do not appear in Cloudflare
-        const missing = argv.configDir.contents.filter((filename) => filename[0] !== '.'
-            && all_zones.find((z) => z.name === path.parse(filename).name) === undefined);
+        inquirer.prompt({
+          type: 'confirm',
+          name: 'confirmCreateIntent',
+          message: 'Are you ready to create the missing zones on Cloudflare?',
+          default: false
+        }).then((answers) => {
+          if (answers.confirmCreateIntent) {
+            // first, confirm which Cloudflare account (there should only be one)
+            // ...so for now we just grab the first one...
+            axios.get('/accounts')
+              .then((accounts_resp) => {
+                if (accounts_resp.data.success) {
+                  const account_id = accounts_resp.data.result[0].id;
+                  const account_name = accounts_resp.data.result[0].name;
+                  // TODO: get confirmation on the account found?
+                  console.log(`We'll be adding these to ${account_name}.`);
 
-        if (missing.length > 0) {
-          console.log(`\nThe following ${chalk.bold(missing.length)} domains are not yet in Cloudflare:`);
-          missing.forEach((li) => {
-            console.log(` - ${li.substr(0, li.length - 5)} (see ${path.join(argv.configDir.name, li)})`);
-          });
-
-          // ask if the user is ready to create the above missing zones
-          console.log();
-          inquirer.prompt({
-            type: 'confirm',
-            name: 'confirmCreateIntent',
-            message: 'Are you ready to create the missing zones on Cloudflare?',
-            default: false
-          }).then((answers) => {
-            if (answers.confirmCreateIntent) {
-              // first, confirm which Cloudflare account (there should only be one)
-              // ...so for now we just grab the first one...
-              axios.get('/accounts')
-                .then((accounts_resp) => {
-                  if (accounts_resp.data.success) {
-                    const account_id = accounts_resp.data.result[0].id;
-                    const account_name = accounts_resp.data.result[0].name;
-                    // TODO: get confirmation on the account found?
-                    console.log(`We'll be adding these to ${account_name}.`);
-
-                    // recursive function that will add each in sequence (based
-                    // on positive responses of course)
-                    confirmDomainAdditions(missing, account_name, account_id, argv);
-                  }
-                })
-                .catch((err) => {
-                  console.log(err);
-                  console.dir(err.response.data, { depth: 5 });
-                });
-            }
-          });
-        }
+                  // recursive function that will add each in sequence (based
+                  // on positive responses of course)
+                  confirmDomainAdditions(missing, account_name, account_id, argv);
+                }
+              })
+              .catch((err) => {
+                console.log(err);
+                console.dir(err.response.data, { depth: 5 });
+              });
+          }
+        });
       }
     })
     .catch((err) => {
