@@ -221,12 +221,12 @@ exports.handler = (argv) => {
       db.close();
 
       // list any redirect descriptions available which do not appear in Cloudflare
-      const missing = argv.configDir.contents.filter((filename) => filename[0] !== '.'
+      const missing_zones = argv.configDir.contents.filter((filename) => filename[0] !== '.'
           && all_zones.find((z) => z.name === path.parse(filename).name) === undefined);
 
-      if (missing.length > 0) {
-        console.log(`\nThe following ${chalk.bold(missing.length)} domains are not yet in Cloudflare:`);
-        missing.forEach((li) => {
+      if (missing_zones.length > 0) {
+        console.log(`\nThe following ${chalk.bold(missing_zones.length)} domains are not yet in Cloudflare:`);
+        missing_zones.forEach((li) => {
           console.log(` - ${li.substr(0, li.length - 5)} (see ${path.join(argv.configDir.name, li)})`);
         });
 
@@ -251,7 +251,7 @@ exports.handler = (argv) => {
 
                   // recursive function that will add each in sequence (based
                   // on positive responses of course)
-                  confirmDomainAdditions(missing, account_name, account_id, argv);
+                  confirmDomainAdditions(missing_zones, account_name, account_id, argv);
                 }
               })
               .catch((err) => {
