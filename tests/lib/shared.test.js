@@ -1,7 +1,11 @@
 /* globals describe, expect, it */
 /* eslint-disable quotes, quote-props */
 
-const { convertPageRulesToRedirects } = require('../../lib/shared.js');
+const {
+  convertPageRulesToRedirects,
+  hasConflictingDNSRecord,
+  hasDNSRecord
+} = require('../../lib/shared.js');
 
 // expects the value of `results` from the output of
 // https://api.cloudflare.com/#page-rules-for-a-zone-list-page-rules
@@ -45,4 +49,57 @@ describe('converting Page Rules to Redirects', () => {
     ]));
   });
   // TODO: it('ignores other types of rules')
+});
+
+const required_dns_records = [
+  {
+    type: 'A',
+    name: 'niptupdate.com',
+    content: '1.2.3.4',
+    ttl: 1,
+    proxied: true
+  },
+  {
+    type: 'CNAME',
+    name: 'www.niptupdate.com',
+    content: 'niptupdate.com',
+    ttl: 1,
+    proxied: true
+  }
+];
+
+const dns_line = {
+  id: '2d5307c7e907aa9ce3966751cbf8c7b2',
+  zone_id: '343640b7a11e6ae721a33d8cc0eba7e9',
+  zone_name: 'niptupdate.com',
+  name: 'niptupdate.com',
+  type: 'A',
+  content: '1.2.3.4',
+  proxiable: true,
+  proxied: true,
+  ttl: 1,
+  locked: false,
+  meta: {
+    auto_added: false,
+    managed_by_apps: false,
+    managed_by_argo_tunnel: false,
+    source: 'primary'
+  },
+  created_on: '2021-02-09T16:23:09.16238Z',
+  modified_on: '2021-02-09T16:23:09.16238Z'
+};
+
+describe('has Conflicting DNS Records', () => {
+  it('should return false if everything matches', () => {
+    const result = hasConflictingDNSRecord(required_dns_records, dns_line);
+    expect(result).toEqual(false);
+  });
+});
+
+describe('has DNS Record', () => {
+  it('should return true if the record exists in the current DNS', () => {
+    const result = hasDNSRecord(required_dns_records, dns_line);
+    console.log(result);
+    expect(result).toEqual(true);
+  });
 });
