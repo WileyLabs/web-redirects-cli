@@ -220,13 +220,35 @@ exports.handler = (argv) => {
       });
       db.close();
 
-      // list any redirect descriptions available which do not appear in Cloudflare
-      const missing_zones = argv.configDir.contents.filter((filename) => filename[0] !== '.'
-          && all_zones.find((z) => z.name === path.parse(filename).name) === undefined);
+      const all_zone_names = all_zones.map((z) => z.name);
 
-      if (missing_zones.length > 0) {
-        console.log(`\nThe following ${chalk.bold(missing_zones.length)} domains are not yet in Cloudflare:`);
-        missing_zones.forEach((li) => {
+      const described_zone_names = argv.configDir.contents.map((filename) => {
+        if (filename[0] !== '.') {
+          return filename;
+        }
+        return false;
+      }).filter((r) => r);
+
+      // list of any zones on Cloudflare that lack a description file
+      const zone_but_no_description = all_zone_names
+        .filter((el) => !described_zone_names.includes(`${el}.yaml`)
+               && !described_zone_names.includes(`${el}.json`));
+
+      // list of any redirect descriptions available which do not appear in Cloudflare
+      const described_but_no_zone = described_zone_names
+        .filter((el) => !all_zone_names.includes(path.parse(el).name));
+
+      // list zones without descriptions
+      if (zone_but_no_description.length > 0) {
+        console.log(`\nThe following ${chalk.bold(zone_but_no_description.length)} domains are not yet described locally:`);
+        zone_but_no_description.forEach((zone_name) => {
+          console.log(` - ${zone_name}`);
+        });
+      }
+
+      if (described_but_no_zone.length > 0) {
+        console.log(`\nThe following ${chalk.bold(described_but_no_zone.length)} domains are not yet in Cloudflare:`);
+        described_but_no_zone.forEach((li) => {
           console.log(` - ${li.substr(0, li.length - 5)} (see ${path.join(argv.configDir.name, li)})`);
         });
 
