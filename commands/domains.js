@@ -101,48 +101,40 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
               pagerules.forEach((pagerule) => {
                 console.log();
-                console.log('  Does this Page Rule look OK?');
+                console.log(chalk.gray('  Adding these Page Rules...'));
                 outputPageRulesAsText([pagerule]);
-                inquirer.prompt({
-                  type: 'confirm',
-                  name: 'proceed',
-                  message: 'Shall we continue?',
-                  default: true
-                }).then(({ proceed }) => {
-                  if (proceed) {
-                    axios.post(`/zones/${zone_id}/pagerules`, {
-                      status: 'active',
-                      // splat in `targets` and `actions`
-                      ...pagerule
-                    })
-                      .then(({ data }) => {
-                        if (data.success) {
-                          console.log('  Page rule successfully created!');
-                          confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
+
+                axios.post(`/zones/${zone_id}/pagerules`, {
+                  status: 'active',
+                  // splat in `targets` and `actions`
+                  ...pagerule
+                })
+                  .then(({ data }) => {
+                    if (data.success) {
+                      console.log('  Page rule successfully created!');
+                      confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
+                    }
+                  })
+                  .catch((err) => {
+                    // TODO: handle errors better... >_<
+                    if ('response' in err
+                        && 'status' in err.response
+                        && err.response.status >= 400) {
+                      const { data } = err.response;
+                      if (data.errors.length > 0) {
+                        // collect error/message combos and display those
+                        for (let i = 0; i < data.errors.length; i += 1) {
+                          error(data.errors[i].message.split(':')[0]);
+                          warn(data.messages[i].message.split(':')[1]);
                         }
-                      })
-                      .catch((err) => {
-                        // TODO: handle errors better... >_<
-                        if ('response' in err
-                            && 'status' in err.response
-                            && err.response.status >= 400) {
-                          const { data } = err.response;
-                          if (data.errors.length > 0) {
-                            // collect error/message combos and display those
-                            for (let i = 0; i < data.errors.length; i += 1) {
-                              error(data.errors[i].message.split(':')[0]);
-                              warn(data.messages[i].message.split(':')[1]);
-                            }
-                          } else {
-                            // assume we have something...else...
-                            console.dir(data, { depth: 5 });
-                          }
-                        } else {
-                          console.dir(err, { depth: 5 });
-                        }
-                      });
-                  }
-                });
+                      } else {
+                        // assume we have something...else...
+                        console.dir(data, { depth: 5 });
+                      }
+                    } else {
+                      console.dir(err, { depth: 5 });
+                    }
+                  });
               });
 
               createTheseDNSRecords(zone_id, buildRequiredDNSRecordsForPagerules(pagerules));
