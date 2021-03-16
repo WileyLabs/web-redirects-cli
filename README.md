@@ -50,6 +50,16 @@ path can be set using the `--configDir` or `WR_CONFIG_DIR` environment
 variable. It does default to `.`, so if you're running `redirects` in your
 config/redirects folder, then you can avoid setting it.
 
+Alternatively, you can create a `.env` file in the directory from which you
+plan to run the `redirects` command.
+
+For example:
+```sh
+# .env
+WR_CLOUDFLARE_TOKEN="H32...23H"
+WR_CONFIG_DIR="redirects/"
+```
+
 ## Settings and Redirects Directory
 
 Create a directory (typically `domains/` or `redirects/`) anywhere you'd like

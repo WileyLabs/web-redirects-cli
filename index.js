@@ -9,6 +9,9 @@
 
 const fs = require('fs');
 
+// load environment variables from `.env` file (if any)
+require('dotenv').config();
+
 /**
  * Command handler of awesomeness.
  */
