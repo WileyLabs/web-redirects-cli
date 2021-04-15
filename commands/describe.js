@@ -7,24 +7,24 @@ const YAML = require('js-yaml');
 /**
  * Describe a redirect as a YAML file
  */
-exports.command = ['describe <from> <to>'];
+exports.command = ['describe <domain> <destination>'];
 exports.describe = 'Describe a redirect as a YAML file';
 exports.builder = (yargs) => yargs.demandOption('configDir')
-  .positional('from', {
+  .positional('domain', {
     describe: 'Domain to redirect',
     type: 'string'
   })
-  .positional('to', {
+  .positional('destination', {
     describe: 'Destination URL for this redirect',
     type: 'string'
   });
 exports.handler = (argv) => {
-  const { configDir, from, to } = argv;
+  const { configDir, domain, destination } = argv;
   const redirect = YAML.safeDump({
-    name: from,
-    redirects: [{ from: '/*', to }]
+    name: domain,
+    redirects: [{ from: '/*', destination }]
   });
-  const filepath = path.join(configDir.name, `${from}.yaml`);
+  const filepath = path.join(configDir.name, `${domain}.yaml`);
 
   fs.writeFile(filepath, redirect, (err) => {
     if (err) throw err;
