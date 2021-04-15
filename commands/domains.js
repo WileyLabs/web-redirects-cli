@@ -204,9 +204,16 @@ exports.handler = (argv) => {
       console.log(`${chalk.bold(all_zones.length)} Zones:`);
       // loop through the returned zones and store a domain => id mapping
       all_zones.forEach((zone) => {
-        console.log(`${zone.status === 'active' ? chalk.green('✓ ') : chalk.blue('🕓')} ${chalk.bold(zone.name)} - ${chalk[zone.plan.name === 'Enterprise Website' ? 'red' : 'green'](zone.plan.name)}`);
-        if (zone.status === 'pending') {
+        let status_icon = chalk.green('✓ ');
+        if (zone.status !== 'active') status_icon = chalk.blue('🕓');
+        if (zone.paused) status_icon = chalk.blue('⏸️');
+
+        console.log(`${status_icon} ${chalk.bold(zone.name)} - ${chalk[zone.plan.name === 'Enterprise Website' ? 'red' : 'green'](zone.plan.name)}`);
+        if (zone.status === 'pending' && !zone.paused && zone.type !== 'partial') {
           console.log(chalk.keyword('lightblue')(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
+        }
+        if (zone.status === 'pending' && !zone.paused && zone.type === 'partial') {
+          console.log(chalk.keyword('lightblue')('CNAME Setup required. See Cloudflare UX.'));
         }
         // output a warning if there is no local description
         const redir_filename = argv.configDir.contents
