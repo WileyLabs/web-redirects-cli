@@ -1,4 +1,6 @@
 # Web Redirects
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FWileyLabs%2Fweb-redirects-cli.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FWileyLabs%2Fweb-redirects-cli?ref=badge_shield)
+
 
 Managing a wide range of Web (HTTP and HTTPS) redirects can be challenging,
 confusing, and cumbersome. This project aims to provide a descriptive approach
@@ -128,3 +130,6 @@ creating Page Rule based redirects.
 ## License
 
 MIT
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FWileyLabs%2Fweb-redirects-cli.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FWileyLabs%2Fweb-redirects-cli?ref=badge_large)
