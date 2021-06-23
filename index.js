@@ -25,6 +25,11 @@ require('yargs')
     demandOption: true,
     type: 'string'
   })
+  .option('accountId', {
+    describe: 'ID of the account for which you are managing redirects',
+    demandOption: true,
+    type: 'string'
+  })
   .option('configDir', {
     type: 'string',
     describe: 'directory containing the `.settings.yaml` default configuration (WR_CONFIG_DIR)',
