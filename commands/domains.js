@@ -124,7 +124,9 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                         // collect error/message combos and display those
                         for (let i = 0; i < data.errors.length; i += 1) {
                           error(data.errors[i].message.split(':')[0]);
-                          warn(data.messages[i].message.split(':')[1]);
+                          if ('messages' in data) {
+                            warn(data.messages[i].message.split(':')[1]);
+                          }
                         }
                       } else {
                         // assume we have something...else...
@@ -290,7 +292,11 @@ exports.handler = (argv) => {
       }
     })
     .catch((err) => {
-      console.error(err);
-      console.error(err.response.data);
+      if ('response' in err && 'status' in err.response) {
+        console.error(chalk.red(`${err.response.status} ${err.response.statusText}`));
+        console.dir(err.response.data, { depth: 5 });
+      } else {
+        console.error(err);
+      }
     });
 };

@@ -13,7 +13,9 @@ const inquirer = require('inquirer');
 const level = require('level');
 const YAML = require('js-yaml');
 
-const { error, warn, convertToIdValueObjectArray } = require('../lib/shared.js');
+const {
+  error, warn, convertToIdValueObjectArray, outputApiError
+} = require('../lib/shared.js');
 
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
@@ -113,10 +115,9 @@ exports.handler = (argv) => {
               console.error(err);
             }
           }
-        })
-          .catch(console.error);
+        }).catch(outputApiError);
       })
-      .catch(console.error);
+      .catch(outputApiError);
     db.close();
   }
 };
