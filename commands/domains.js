@@ -78,22 +78,21 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
         console.log(chalk.gray('  Creating the zone...'));
         axios.post('/zones', {
           name: domain,
-          account: { id: account_id },
-          jump_start: true
+          account: { id: account_id }
         })
           .then((resp) => {
             if (resp.data.success) {
-              const zone_id = resp.data.result.id;
-              // update domain to zone_id map in local database
+              const zone = resp.data.result;
+              // update domain to zone.id map in local database
               const db = level(`${process.cwd()}/.cache-db`);
-              db.put(domain, zone_id)
+              db.put(domain, zone.id)
                 .catch(console.error);
               db.close();
 
               console.log(`  ${chalk.bold(resp.data.result.name)} has been created and is ${chalk.bold(resp.data.result.status)}`);
 
               // set the security settings to the defaults
-              setSecuritySettings(argv, zone_id);
+              setSecuritySettings(argv, zone.id);
 
               // TODO: we need to wait until the security settings are complete before we continue
               // TODO: we should do all the redirect display in one go,
@@ -104,7 +103,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                 console.log(chalk.gray('  Adding these Page Rules...'));
                 outputPageRulesAsText([pagerule]);
 
-                axios.post(`/zones/${zone_id}/pagerules`, {
+                axios.post(`/zones/${zone.id}/pagerules`, {
                   status: 'active',
                   // splat in `targets` and `actions`
                   ...pagerule
@@ -137,7 +136,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   });
               });
 
-              createTheseDNSRecords(zone_id, buildRequiredDNSRecordsForPagerules(pagerules));
+              createTheseDNSRecords(zone.id, buildRequiredDNSRecordsForPagerules(pagerules));
             }
           })
           .catch((err) => {
