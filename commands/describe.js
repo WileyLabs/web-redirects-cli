@@ -22,7 +22,7 @@ exports.handler = (argv) => {
   const { configDir, domain, destination } = argv;
   const redirect = YAML.safeDump({
     name: domain,
-    redirects: [{ from: '/*', destination }]
+    redirects: [{ from: '/*', to: destination }]
   });
   const filepath = path.join(configDir.name, `${domain}.yaml`);
 
