@@ -71,7 +71,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
     inquirer.prompt({
       type: 'confirm',
       name: 'confirmCreate',
-      message: `Add ${domain} to ${account_name}?`,
+      message: `Add ${domain} with ${description.redirects.length} redirects to ${account_name}?`,
       default: false
     }).then((answers) => {
       if (answers.confirmCreate) {
@@ -83,6 +83,8 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
           .then((resp) => {
             if (resp.data.success) {
               const zone = resp.data.result;
+              const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
+
               // update domain to zone.id map in local database
               const db = level(`${process.cwd()}/.cache-db`);
               db.put(domain, zone.id)
@@ -95,49 +97,74 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               setSecuritySettings(argv, zone.id);
 
               // TODO: we need to wait until the security settings are complete before we continue
-              // TODO: we should do all the redirect display in one go,
-              // and get confirmation on the lot of them...not one at a time
-              const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
-              pagerules.forEach((pagerule) => {
-                console.log();
-                console.log(chalk.gray('  Adding these Page Rules...'));
-                outputPageRulesAsText([pagerule]);
-
-                axios.post(`/zones/${zone.id}/pagerules`, {
-                  status: 'active',
-                  // splat in `targets` and `actions`
-                  ...pagerule
-                })
+              if (description.redirects.length > 3) {
+                // There are too many redirects for the Free Website plan,
+                // so let's setup a Worker Route...
+                axios
+                  .post(`/zones/${zone.id}/workers/routes`, {
+                    pattern: `*${domain}/*`,
+                    script: 'redir' // TODO: make this configurable!!
+                  })
                   .then(({ data }) => {
                     if (data.success) {
-                      console.log('  Page rule successfully created!');
-                      confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
+                      console.log('  Worker Route configured successfully!');
                     }
                   })
-                  .catch((err) => {
-                    // TODO: handle errors better... >_<
-                    if ('response' in err
-                        && 'status' in err.response
-                        && err.response.status >= 400) {
-                      const { data } = err.response;
-                      if (data.errors.length > 0) {
-                        // collect error/message combos and display those
-                        for (let i = 0; i < data.errors.length; i += 1) {
-                          error(data.errors[i].message.split(':')[0]);
-                          if ('messages' in data) {
-                            warn(data.messages[i].message.split(':')[1]);
+                  .catch(console.error);
+                // ...and put the redirect description in the Worker KV storage.
+                // TODO: check (earlier than here!) whether WR_WORKER_KV_NAMESPACE is set
+                axios.put(`/accounts/${argv.accountId}/storage/kv/namespaces/${argv.workerKvNamespace}/values/${domain}`, description)
+                  .then(({ data }) => {
+                    if (data.success) {
+                      console.log('  Redirect Description stored in Key Value storage successfully!');
+                    }
+                  })
+                  .catch(console.error);
+              } else {
+                // TODO: we should do all the redirect display in one go,
+                // and get confirmation on the lot of them...not one at a time
+                pagerules.forEach((pagerule) => {
+                  console.log();
+                  console.log(chalk.gray('  Adding these Page Rules...'));
+                  outputPageRulesAsText([pagerule]);
+
+                  axios.post(`/zones/${zone.id}/pagerules`, {
+                    status: 'active',
+                    // splat in `targets` and `actions`
+                    ...pagerule
+                  })
+                    .then(({ data }) => {
+                      if (data.success) {
+                        console.log('  Page rule successfully created!');
+                        confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
+                      }
+                    })
+                    .catch((err) => {
+                      // TODO: handle errors better... >_<
+                      if ('response' in err
+                          && 'status' in err.response
+                          && err.response.status >= 400) {
+                        const { data } = err.response;
+                        if (data.errors.length > 0) {
+                          // collect error/message combos and display those
+                          for (let i = 0; i < data.errors.length; i += 1) {
+                            error(data.errors[i].message.split(':')[0]);
+                            if ('messages' in data) {
+                              warn(data.messages[i].message.split(':')[1]);
+                            }
                           }
+                        } else {
+                          // assume we have something...else...
+                          console.dir(data, { depth: 5 });
                         }
                       } else {
-                        // assume we have something...else...
-                        console.dir(data, { depth: 5 });
+                        console.dir(err, { depth: 5 });
                       }
-                    } else {
-                      console.dir(err, { depth: 5 });
-                    }
-                  });
-              });
+                    });
+                });
+              }
 
+              // same DNS records for both worker and page rules
               createTheseDNSRecords(zone.id, buildRequiredDNSRecordsForPagerules(pagerules));
             }
           })

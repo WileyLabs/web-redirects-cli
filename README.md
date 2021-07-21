@@ -57,6 +57,8 @@ For example:
 ```sh
 # .env
 WR_CLOUDFLARE_TOKEN="H32...23H"
+WR_ACCOUNT_ID="..."
+WR_WORKER_KV_NAMESPACE="..."
 WR_CONFIG_DIR="redirects/"
 ```
 
