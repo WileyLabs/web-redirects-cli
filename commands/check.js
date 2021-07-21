@@ -77,7 +77,7 @@ exports.handler = (argv) => {
             const settings_path = path.join(process.cwd(), argv.configDir.name,
               '.settings.yaml');
             try {
-              const baseline = YAML.safeLoad(fs.readFileSync(settings_path));
+              const baseline = YAML.load(fs.readFileSync(settings_path));
               const updates = updatedDiff(current, baseline);
               if (Object.keys(updates).length > 0) {
                 warn('These settings need updating:');

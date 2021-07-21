@@ -31,7 +31,7 @@ function setSecuritySettings(argv, zone_id) {
   const settings_path = path.join(process.cwd(), argv.configDir.name,
     '.settings.yaml');
   try {
-    const settings = YAML.safeLoad(fs.readFileSync(settings_path));
+    const settings = YAML.load(fs.readFileSync(settings_path));
     axios.patch(`/zones/${zone_id}/settings`,
       { items: convertToIdValueObjectArray(settings) })
       .catch((err) => {
@@ -60,7 +60,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
 
   let description = '';
   try {
-    description = YAML.safeLoad(fs.readFileSync((redir_filepath)));
+    description = YAML.load(fs.readFileSync((redir_filepath)));
   } catch (err) {
     console.error(chalk.red(`${err.name}: ${err.reason}`));
     console.log(`Skipping ${domain} for now.`);

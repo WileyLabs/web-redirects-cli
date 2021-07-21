@@ -72,7 +72,7 @@ exports.handler = (argv) => {
               // compare descriptive redirect against current page rule(s)
               const current = convertPageRulesToRedirects(pagerules);
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
-              const future = YAML.safeLoad(fs.readFileSync(redir_filepath)).redirects;
+              const future = YAML.load(fs.readFileSync(redir_filepath)).redirects;
               const missing = diff(current, future);
 
               // `base` or `status` being undefined is not an error (as they
@@ -94,7 +94,7 @@ exports.handler = (argv) => {
                 Object.keys(missing).forEach((i) => {
                   if (current[i] === undefined) {
                     // we've got a new rule
-                    diff_rows.push([chalk.green('none: will add ->'), YAML.safeDump(future[i]), '']);
+                    diff_rows.push([chalk.green('none: will add ->'), YAML.dump(future[i]), '']);
                     modifications[uuid.v4()] = {
                       method: 'post',
                       pagerule: {
@@ -103,15 +103,15 @@ exports.handler = (argv) => {
                       }
                     };
                   } else if (future[i] === undefined) {
-                    diff_rows.push([YAML.safeDump(current[i]) || '',
+                    diff_rows.push([YAML.dump(current[i]) || '',
                       chalk.red('<-- will remove'), '']);
                     // mark the pagerule for deletion
                     modifications[pagerules[i].id] = { method: 'delete' };
                   } else {
                     // we've got a modification
-                    diff_rows.push([YAML.safeDump(current[i]) || '',
-                      YAML.safeDump(future[i]) || '',
-                      YAML.safeDump(missing[i]) || '']);
+                    diff_rows.push([YAML.dump(current[i]) || '',
+                      YAML.dump(future[i]) || '',
+                      YAML.dump(missing[i]) || '']);
                     // replace the current pagerule with the future one
                     // TODO: this doesn't work for reordering...we have to
                     // match rules and change the `priority` value of each

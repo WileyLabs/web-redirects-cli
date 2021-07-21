@@ -20,7 +20,7 @@ exports.builder = (yargs) => yargs.demandOption('configDir')
   });
 exports.handler = (argv) => {
   const { configDir, domain, destination } = argv;
-  const redirect = YAML.safeDump({
+  const redirect = YAML.dump({
     name: domain,
     redirects: [{ from: '/*', to: destination }]
   });
