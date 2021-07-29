@@ -42,17 +42,17 @@ require('yargs')
     }
   })
   // Describe a redirect as a YAML file
-  .command(require('./commands/describe.js'))
+  .command(require('./commands/describe'))
   // List zones in current Cloudflare account
-  .command(require('./commands/domains.js'))
+  .command(require('./commands/domains'))
   // Show current redirects for [domain]
-  .command(require('./commands/show.js'))
+  .command(require('./commands/show'))
   // Check [domain]'s settings with Cloudflare's
-  .command(require('./commands/check.js'))
+  .command(require('./commands/check'))
   // Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
-  .command(require('./commands/compare.js'))
+  .command(require('./commands/compare'))
   // Mange the DNS records for [domain]
-  .command(require('./commands/dns.js'))
+  .command(require('./commands/dns'))
   .demandCommand(1, '')
   .alias('h', 'help')
   .argv;

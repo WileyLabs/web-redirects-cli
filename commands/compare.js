@@ -18,7 +18,7 @@ const YAML = require('js-yaml');
 const {
   error, convertPageRulesToRedirects, convertRedirectToPageRule,
   outputPageRulesAsText
-} = require('../lib/shared.js');
+} = require('../lib/shared');
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';

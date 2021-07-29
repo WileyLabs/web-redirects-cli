@@ -15,7 +15,7 @@ const YAML = require('js-yaml');
 
 const {
   error, warn, convertToIdValueObjectArray, outputApiError
-} = require('../lib/shared.js');
+} = require('../lib/shared');
 
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
