@@ -53,6 +53,8 @@ require('yargs')
   .command(require('./commands/compare'))
   // Mange the DNS records for [domain]
   .command(require('./commands/dns'))
+  // Output a link to the Cloudflare Dashboard
+  .command(require('./commands/dash'))
   .demandCommand(1, '')
   .alias('h', 'help')
   .argv;
