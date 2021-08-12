@@ -166,6 +166,9 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
 
               // same DNS records for both worker and page rules
               createTheseDNSRecords(zone.id, buildRequiredDNSRecordsForPagerules(pagerules));
+
+              console.log('  To activate this site, change the name servers to:');
+              console.log(`    ${chalk.bold(resp.data.result.name_servers.join('\n    '))}`);
             }
           })
           .catch((err) => {
