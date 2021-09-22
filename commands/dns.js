@@ -80,6 +80,17 @@ exports.handler = (argv) => {
                 table.row(...line_array.map((i) => chalk.white(i)));
               }
             });
+
+            // make sure all required dns records are present
+            required_dns_records.forEach((line) => {
+              const line_array = [line.type, line.name, line.content, line.ttl,
+                line.proxied ? chalk.keyword('orange')(line.proxied) : line.proxied];
+              if (!hasDNSRecord(dns_records, line)) {
+                conflicts.push(line);
+                table.row(...line_array.map((i) => chalk.keyword('orange')(i)));
+              }
+            });
+
             // removing the annoying extra line under the header
             const output_array = table.toString().split('\n');
             output_array.splice(1, 1);
