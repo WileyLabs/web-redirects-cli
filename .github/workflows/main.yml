@@ -31,4 +31,6 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
+        env:
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: fossa analyze
