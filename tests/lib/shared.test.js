@@ -55,7 +55,7 @@ const required_dns_records = [
   {
     type: 'A',
     name: 'niptupdate.com',
-    content: '1.2.3.4',
+    content: '192.0.2.0',
     ttl: 1,
     proxied: true
   },
@@ -74,7 +74,7 @@ const dns_line = {
   zone_name: 'niptupdate.com',
   name: 'niptupdate.com',
   type: 'A',
-  content: '1.2.3.4',
+  content: '192.0.2.0',
   proxiable: true,
   proxied: true,
   ttl: 1,
