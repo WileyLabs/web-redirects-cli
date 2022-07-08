@@ -2,6 +2,7 @@
 /* eslint-disable quotes, quote-props */
 
 const {
+  collectReplacementRecords,
   convertPageRulesToRedirects,
   hasConflictingDNSRecord,
   hasDNSRecord
@@ -101,5 +102,21 @@ describe('has DNS Record', () => {
     const result = hasDNSRecord(required_dns_records, dns_line);
     console.log(result);
     expect(result).toEqual(true);
+  });
+});
+
+describe('collect replacement records', () => {
+  it('should return only the record that needs replacing', () => {
+    const conflicting_dns_line = dns_line;
+    conflicting_dns_line.content = '1.2.3.4';
+    const result = collectReplacementRecords(required_dns_records, [conflicting_dns_line]);
+    expect(result).toEqual([
+      {
+        type: 'A',
+        name: 'example.com',
+        content: '192.0.2.0',
+        ttl: 1,
+        proxied: true
+      }]);
   });
 });
