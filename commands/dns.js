@@ -83,6 +83,10 @@ exports.handler = (argv) => {
             });
 
             // make sure all required dns records are present
+            // TODO: this will add any unknown/unlisted DNS to the conflicts list
+            // ...which means they'll get deleted...when they should likely be
+            // preserved...i.e. if they're not in direct conflicts with a requirement
+            // they should stay.
             required_dns_records.forEach((line) => {
               const line_array = [line.type, line.name, line.content, line.ttl,
                 line.proxied ? chalk.keyword('orange')(line.proxied) : line.proxied];
