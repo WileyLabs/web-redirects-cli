@@ -54,15 +54,15 @@ describe('converting Page Rules to Redirects', () => {
 const required_dns_records = [
   {
     type: 'A',
-    name: 'niptupdate.com',
+    name: 'example.com',
     content: '192.0.2.0',
     ttl: 1,
     proxied: true
   },
   {
     type: 'CNAME',
-    name: 'www.niptupdate.com',
-    content: 'niptupdate.com',
+    name: 'www.example.com',
+    content: 'example.com',
     ttl: 1,
     proxied: true
   }
@@ -71,8 +71,8 @@ const required_dns_records = [
 const dns_line = {
   id: '2d5307c7e907aa9ce3966751cbf8c7b2',
   zone_id: '343640b7a11e6ae721a33d8cc0eba7e9',
-  zone_name: 'niptupdate.com',
-  name: 'niptupdate.com',
+  zone_name: 'example.com',
+  name: 'example.com',
   type: 'A',
   content: '192.0.2.0',
   proxiable: true,
