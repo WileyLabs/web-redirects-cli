@@ -69,8 +69,6 @@ exports.handler = (argv) => {
             if (undefined === redir_filename) {
               console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
             } else {
-              // compare descriptive redirect against current page rule(s)
-              const current = convertPageRulesToRedirects(pagerules);
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
               let future = YAML.load(fs.readFileSync(redir_filepath)).redirects;
               // add defalts into minimal YAMLs
@@ -84,6 +82,13 @@ exports.handler = (argv) => {
                 }
                 return rv;
               });
+              if (future.length > zone.meta.page_rule_quota) {
+                console.log(chalk.red(`Sorry, there are ${future.length} and ${chalk.bold('only')} ${zone.meta.page_rule_quota} available.`));
+                console.log(`Use the ${chalk.bold('worker')} command to use that instead of Page Rules.`);
+                process.exit();
+              }
+              // compare descriptive redirect against current page rule(s)
+              const current = convertPageRulesToRedirects(pagerules);
               const missing = diff(current, future);
 
               // modifications will be an object key'd by the pagerule ID

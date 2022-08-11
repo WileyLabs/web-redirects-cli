@@ -55,6 +55,8 @@ require('yargs')
   .command(require('./commands/dns'))
   // Output a link to the Cloudflare Dashboard
   .command(require('./commands/dash'))
+  // Setup Worker and KV stuff for large redirects
+  .command(require('./commands/worker'))
   .demandCommand(1, '')
   .alias('h', 'help')
   .argv;
