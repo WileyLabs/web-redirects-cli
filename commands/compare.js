@@ -72,17 +72,19 @@ exports.handler = (argv) => {
               // compare descriptive redirect against current page rule(s)
               const current = convertPageRulesToRedirects(pagerules);
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
-              const future = YAML.load(fs.readFileSync(redir_filepath)).redirects;
-              const missing = diff(current, future);
-
-              // `base` or `status` being undefined is not an error (as they
-              // are optional), so clean that out
-              Object.keys(missing).forEach((i) => {
-                if (missing[i].base === undefined) delete missing[i].base;
-                if (missing[i].status === undefined) delete missing[i].status;
-                // if we've removed everything of meaning, then dump the remains
-                if (Object.keys(missing[i]).length === 0) delete missing[i];
+              let future = YAML.load(fs.readFileSync(redir_filepath)).redirects;
+              // add defalts into minimal YAMLs
+              future = future.map((rule) => {
+                const rv = rule;
+                if (!('base' in rule)) {
+                  rv.base = `*${argv.domain}`;
+                }
+                if (!('status' in rule)) {
+                  rv.status = 301;
+                }
+                return rv;
               });
+              const missing = diff(current, future);
 
               // modifications will be an object key'd by the pagerule ID
               // and the value will contain the change to make
