@@ -28,6 +28,56 @@ function outputDifferences(updates, current, l = 0) {
   });
 }
 
+function checkSecurity(configDir, zone, settings) {
+  // check security settings against `.settings.yaml` in redirects folder
+  const current = {};
+  settings.forEach((s) => {
+    current[s.id] = s.value;
+  });
+  if (configDir.contents.indexOf('.settings.yaml') > -1) {
+    const settings_path = path.join(process.cwd(), configDir.name,
+      '.settings.yaml');
+    try {
+      const baseline = YAML.load(fs.readFileSync(settings_path));
+      const updates = updatedDiff(current, baseline);
+      if (Object.keys(updates).length > 0) {
+        warn('These settings need updating:');
+        outputDifferences(updates, current);
+        console.log();
+        inquirer.prompt({
+          type: 'confirm',
+          name: 'confirmUpdates',
+          // TODO: ask for each setting?
+          message: `Update ${zone.name} to match all these settings?`,
+          default: false
+        }).then((answers) => {
+          if (answers.confirmUpdates) {
+            axios.patch(`/zones/${zone.id}/settings`,
+              { items: convertToIdValueObjectArray(updates) })
+              .then((resp) => {
+                if (resp.data.success) {
+                  console.log(chalk.green('Success! The settings have been updated.'));
+                }
+              }).catch((err) => {
+                if ('response' in err
+                    && 'status' in err.response
+                    && err.response.status === 403) {
+                  error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
+                } else {
+                  console.error(err);
+                }
+              });
+          }
+        }).catch(console.error);
+      } else {
+        console.log(`${chalk.bold.green('✓')} Current zone settings match the preferred configuration.`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+}
+
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
@@ -62,54 +112,8 @@ exports.handler = (argv) => {
           axios.get(`/zones/${zone_id}/settings`)
         ]).then((results) => {
           const [zone, settings] = results.map((resp) => resp.data.result);
-
-          // check security settings against `.settings.yaml` in redirects folder
-          const current = {};
-          settings.forEach((s) => {
-            current[s.id] = s.value;
-          });
-          if (argv.configDir.contents.indexOf('.settings.yaml') > -1) {
-            const settings_path = path.join(process.cwd(), argv.configDir.name,
-              '.settings.yaml');
-            try {
-              const baseline = YAML.load(fs.readFileSync(settings_path));
-              const updates = updatedDiff(current, baseline);
-              if (Object.keys(updates).length > 0) {
-                warn('These settings need updating:');
-                outputDifferences(updates, current);
-                console.log();
-                inquirer.prompt({
-                  type: 'confirm',
-                  name: 'confirmUpdates',
-                  // TODO: ask for each setting?
-                  message: `Update ${zone.name} to match all these settings?`,
-                  default: false
-                }).then((answers) => {
-                  if (answers.confirmUpdates) {
-                    axios.patch(`/zones/${zone_id}/settings`,
-                      { items: convertToIdValueObjectArray(updates) })
-                      .then((resp) => {
-                        if (resp.data.success) {
-                          console.log(chalk.green('Success! The settings have been updated.'));
-                        }
-                      }).catch((err) => {
-                        if ('response' in err
-                            && 'status' in err.response
-                            && err.response.status === 403) {
-                          error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
-                        } else {
-                          console.error(err);
-                        }
-                      });
-                  }
-                }).catch(console.error);
-              } else {
-                console.log(`${chalk.bold.green('✓')} Current zone settings match the preferred configuration.`);
-              }
-            } catch (err) {
-              console.error(err);
-            }
-          }
+          // the main event
+          checkSecurity(argv.configDir, zone, settings);
         }).catch(outputApiError);
       })
       .catch(outputApiError);
