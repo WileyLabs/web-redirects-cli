@@ -59,15 +59,10 @@ exports.handler = (argv) => {
         // gather zone/domain information from Cloudflare
         Promise.all([
           axios.get(`/zones/${zone_id}`),
-          axios.get(`/zones/${zone_id}/pagerules`),
           axios.get(`/zones/${zone_id}/settings`)
         ]).then((results) => {
-          const [zone, pagerules, settings] = results.map((resp) => resp.data.result);
+          const [zone, settings] = results.map((resp) => resp.data.result);
 
-          console.log(`Zone Health Check:
-  ${chalk.bold(zone.name)} - ${zone.id}
-  ${chalk.green(zone.plan.name)} - ${pagerules.length} of ${zone.meta.page_rule_quota} Page Rules used.
-`);
           // check security settings against `.settings.yaml` in redirects folder
           const current = {};
           settings.forEach((s) => {
