@@ -14,7 +14,7 @@ const level = require('level');
 const YAML = require('js-yaml');
 
 const {
-  error, warn, convertToIdValueObjectArray, outputApiError
+  error, gatherZones, warn, convertToIdValueObjectArray, outputApiError
 } = require('../lib/shared');
 
 function outputDifferences(updates, current, l = 0) {
@@ -23,12 +23,12 @@ function outputDifferences(updates, current, l = 0) {
       console.log(`${'  '.repeat(l)}${key}: ${chalk.green(updates[key])} (currently ${chalk.keyword('orange')(current[key])})`);
     } else {
       console.log(`${'  '.repeat(l)}${key}:`);
-      outputDifferences(updates[key], current, l + 1);
+      outputDifferences(updates[key], current[key], l + 1);
     }
   });
 }
 
-function checkSecurity(configDir, zone, settings) {
+function checkSecurity(configDir, zone, settings, another) {
   // check security settings against `.settings.yaml` in redirects folder
   const current = {};
   settings.forEach((s) => {
@@ -41,7 +41,7 @@ function checkSecurity(configDir, zone, settings) {
       const baseline = YAML.load(fs.readFileSync(settings_path));
       const updates = updatedDiff(current, baseline);
       if (Object.keys(updates).length > 0) {
-        warn('These settings need updating:');
+        warn(`${zone.name} settings need updating:`);
         outputDifferences(updates, current);
         console.log();
         inquirer.prompt({
@@ -56,21 +56,24 @@ function checkSecurity(configDir, zone, settings) {
               { items: convertToIdValueObjectArray(updates) })
               .then((resp) => {
                 if (resp.data.success) {
-                  console.log(chalk.green('Success! The settings have been updated.'));
+                  console.log(chalk.green(`\nSuccess! ${zone.name} settings have been updated.`));
                 }
+                if (another) another();
               }).catch((err) => {
-                if ('response' in err
-                    && 'status' in err.response
-                    && err.response.status === 403) {
+                if ('response' in err && 'status' in err?.response
+                    && err?.response?.status === 403) {
                   error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
                 } else {
                   console.error(err);
                 }
               });
+          } else {
+            if (another) another();
           }
         }).catch(console.error);
       } else {
-        console.log(`${chalk.bold.green('✓')} Current zone settings match the preferred configuration.`);
+        console.log(`${chalk.bold.green('✓')} ${zone.name} settings match the preferred configuration.`);
+        if (another) another();
       }
     } catch (err) {
       console.error(err);
@@ -84,21 +87,36 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 /**
  * Check a [domain]'s settings and redirects
  */
-exports.command = 'check <domain>';
-exports.describe = 'Check a <domain>\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
+exports.command = 'check [domain]';
+exports.describe = 'Check a [domain]\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
 exports.builder = (yargs) => {
   yargs
     .positional('domain', {
       type: 'string',
-      describe: 'a valid domain name',
-      demandOption: true
+      describe: 'a valid domain name'
     })
     .demandOption('configDir');
 };
 exports.handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
-    error('Which domain where you wanting to show redirects for?');
+    gatherZones(argv.accountId)
+      .then((all_zones) => {
+        function another() {
+          const zone = all_zones.shift(); // one at a time
+          if (zone) {
+            // get the settings for the zone
+            axios.get(`/zones/${zone.id}/settings`)
+              // pass all the details to checkSecurity
+              .then(async ({ data }) => {
+                if (data.success) {
+                  checkSecurity(argv.configDir, zone, data.result, another);
+                }
+              }).catch(outputApiError);
+          }
+        }
+        another();
+      });
   } else {
     // setup a local level store for key/values (mostly)
     const db = level(`${process.cwd()}/.cache-db`);
