@@ -18,6 +18,7 @@ const {
   createTheseDNSRecords,
   buildRequiredDNSRecordsForPagerules,
   error,
+  gatherZones,
   outputPageRulesAsText,
   warn
 } = require('../lib/shared');
@@ -198,36 +199,7 @@ exports.describe = 'List domains in the current Cloudflare account';
 // exports.builder = (yargs) => {};
 exports.handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
-  axios.get(`/zones?per_page=50&account.id=${argv.accountId}`)
-    .then((resp) => {
-      const all_zones = [];
-      resp.data.result.forEach((zone) => {
-        all_zones.push(zone);
-      });
-      if ('result_info' in resp.data) {
-        const { per_page, total_count, total_pages } = resp.data.result_info;
-
-        const possible_pages = total_count / per_page;
-
-        if (possible_pages > 1) {
-          // get the rest of the pages in one go
-          const promises = [...Array(total_pages - 1).keys()]
-            .map((i) => axios.get(`/zones?per_page=50&page=${i + 2}&account.id=${argv.accountId}`));
-          return Promise.all(promises)
-            .then((results) => {
-              results.forEach((r) => {
-                if (r.status === 200) {
-                  r.data.result.forEach((zone) => {
-                    all_zones.push(zone);
-                  });
-                }
-              });
-              return all_zones;
-            });
-        }
-      }
-      return all_zones;
-    })
+  gatherZones(argv.accountId)
     .then((all_zones) => {
       // setup a local level store for key/values (mostly)
       const db = level(`${process.cwd()}/.cache-db`);
