@@ -7,6 +7,26 @@ function respondWith404() {
   return new Response('Not Found', { statusText: 'Not Found', status: 404 });
 }
 
+// Regex will default to case-insensitive unless
+// redirEntry.caseSensitive property set to true
+function getRedirectRegEx(redirEntry) {
+  let regex = new RegExp(redirEntry.from, 'i');
+  if (redirEntry.caseSensitive === true) {
+    regex = new RegExp(redirEntry.from);
+  }
+  return regex;
+}
+
+// String matching will be case-insensitive unless
+// redirEntry.caseSensitive property set to true
+function isRedirectEqual(redirEntry, pathname) {
+  if (redirEntry.caseSensitive === true) {
+    return pathname === redirEntry.from;
+  } else {
+    return pathname.toUpperCase() === redirEntry.from.toUpperCase();
+  }
+}
+
 async function handleRequest(request) {
   const url = new URL(request.url);
   const {
@@ -27,20 +47,20 @@ async function handleRequest(request) {
   }
 
   const found = desc.redirects.find((r) => {
-    // we've got a regex
+    // we've got a regex! (N.B. Regexes must be prefixed by '^')
     if (r.from[0] === '^') {
-      const matches = pathname.concat(search).match(r.from);
+      const matches = pathname.concat(search).match(getRedirectRegEx(r));
       return matches !== null;
     }
     // otherwise, just do a simple string comparison
-    return pathname === r.from;
+    return isRedirectEqual(r, pathname);
   });
 
   if (found !== undefined) {
     let redir_to = found.to;
     // if we have a regex, though, we need to (possibly) populate replacements
     if (found.from[0] === '^') {
-      redir_to = pathname.concat(search).replace(new RegExp(found.from), found.to);
+      redir_to = pathname.concat(search).replace(getRedirectRegEx(found), found.to);
     }
     return Response.redirect(redir_to, ('status' in found ? found.status : default_status));
   }
