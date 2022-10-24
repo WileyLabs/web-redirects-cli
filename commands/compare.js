@@ -163,21 +163,21 @@ exports.handler = (argv) => {
                         mod.method === 'delete' ? {} : mod.pagerule)
                         .then((resp) => {
                           if (resp.data.success) {
-                            let msg = '';
                             switch (mod.method) {
                               case 'delete':
-                                msg = `Page rule ${key} has been removed.`;
+                                console.log(`Page rule ${key} has been removed.`);
                                 break;
                               case 'post':
-                                msg = `The following page rule was created and enabled: ${outputPageRulesAsText([resp.data.result])}`;
+                                console.log(`The following page rule was created and enabled:`);
+                                outputPageRulesAsText([resp.data.result]);
                                 break;
                               case 'put':
-                                msg = `Page rule ${key} has been updated: ${outputPageRulesAsText([resp.data.result])}`;
+                                console.log(`Page rule ${key} has been updated:`);
+                                outputPageRulesAsText([resp.data.result]);
                                 break;
                               default:
                                 break;
                             }
-                            console.log(msg);
                           }
                         })
                         .catch((err) => {
