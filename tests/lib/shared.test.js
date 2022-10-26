@@ -100,7 +100,7 @@ describe('has Conflicting DNS Records', () => {
 describe('has DNS Record', () => {
   it('should return true if the record exists in the current DNS', () => {
     const result = hasDNSRecord(required_dns_records, dns_line);
-    console.log(result);
+    // console.log(result);
     expect(result).toEqual(true);
   });
 });

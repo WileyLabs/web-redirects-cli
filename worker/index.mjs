@@ -27,7 +27,7 @@ function isRedirectEqual(redirEntry, pathname) {
   }
 }
 
-async function handleRequest(request) {
+export async function handleRequest(request) {
   const url = new URL(request.url);
   const {
     hostname, pathname, search
@@ -67,4 +67,8 @@ async function handleRequest(request) {
   return respondWith404();
 }
 
-addEventListener('fetch', async (event) => event.respondWith(handleRequest(event.request)));
+export default {
+  async fetch(request, env) {
+    return handleRequest(request, env);
+  }
+};

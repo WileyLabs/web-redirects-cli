@@ -1,0 +1,98 @@
+name: foo.com
+redirects: 
+
+# new configuration for query parameter matching
+
+- from: ^/params1a.html$
+  to: https://bar.com/params1a.html
+  xyz: abc
+
+- from: ^/params1b.html$
+  to: https://bar.com/params1b.html
+  includeParams: true
+
+- from: ^/params1c.html(\?.*)?$
+  to: https://bar.com/params1c.html$1
+  includeParams: true
+
+- from: ^/params2a.html(\?(.*&)?foo=([^&]*))&?.*$
+  to: https://bar.com/params2a/foo/$3
+  includeParams: true
+
+- from: ^/params2b.html(\?(.*&)?foo=([^&]*))&?.*$
+  to: https://bar.com/params2b/foo/$3
+  includeParams: true
+  caseSensitive: true
+
+# simple matches 301
+
+- from: /1234a.html
+  to: https://bar.com/1234a.html
+
+- from: /1234b.html
+  to: https://bar.com/1234b.html
+  caseSensitive: false
+
+- from: /1234c.html
+  to: https://bar.com/1234c.html
+  caseSensitive: true
+
+# simple matches w/ not default 302 status
+
+- from: /1234d.html
+  to: https://bar.com/1234d.html
+  status: 302
+
+- from: /1234e.html
+  to: https://bar.com/1234e.html
+  caseSensitive: false
+  status: 302
+
+- from: /1234f.html
+  to: https://bar.com/1234f.html
+  caseSensitive: true
+  status: 302
+
+# base
+
+- base: test.foo.com
+  from: /2345a.html
+  to: https://bar.com/2345a.html
+
+- base: "*foo.com"
+  from: "/2345b.html"
+  to: "https://bar.com/2345b.html"
+
+# regex
+
+- from: ^/testa/(.*)
+  to: https://bar.com/testa/$1
+
+- from: ^/testb/(.*)
+  to: https://bar.com/testb/$1
+  caseSensitive: false
+
+- from: ^/testc/(.*)
+  to: https://bar.com/testc/$1
+  caseSensitive: true
+
+# regex w/ base
+
+- base: test.alunw.net
+  from: ^/test2/(.*)
+  to: https://bar.com/test2?page=$1
+
+- base: test.alunw.net
+  from: ^/test2/(.*)
+  to: https://bar.com/test2?page=$1
+  caseSensitive: false
+
+- base: test.alunw.net
+  from: ^/test2/(.*)
+  to: https://bar.com/test2?page=$1
+  caseSensitive: true
+
+# catch all
+
+- from: ^/(.*)
+  to: https://www.bar.com/
