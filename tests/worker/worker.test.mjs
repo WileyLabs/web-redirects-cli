@@ -149,7 +149,7 @@ describe('worker tests', () => {
   // });
 
   // ...and will match all levels [new behaviour]
-  test.skip('check multiple sub-domains match zone', async () => {
+  test('check multiple sub-domains match zone', async () => {
     await redirectTest(
       'http://www.eu.test.foo.com/1234a.html', 
       'https://bar.com/1234a.html', 
@@ -185,7 +185,7 @@ describe('worker tests', () => {
   });  
 
   // by default the query string isn't added to the request pathname for comparision
-  test.skip('matching without query string - query string ignored #1', async () => {
+  test('matching without query string - query string ignored #1', async () => {
     await redirectTest(
       'http://www.foo.com/params1a.html?foo=bar', 
       'https://bar.com/params1a.html', 
@@ -194,7 +194,7 @@ describe('worker tests', () => {
   });  
 
   // by default the query string isn't added to the request pathname for comparision
-  test.skip('matching without query string - query string ignored #1', async () => {
+  test('matching without query string - query string ignored #1', async () => {
     await redirectTest(
       'http://www.foo.com/params1a.html?foo=123&bar=456', 
       'https://bar.com/params1a.html', 

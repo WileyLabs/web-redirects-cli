@@ -19,48 +19,60 @@ function getRedirectRegEx(redirEntry) {
 
 // String matching will be case-insensitive unless
 // redirEntry.caseSensitive property set to true
-function isRedirectEqual(redirEntry, pathname) {
+function isRedirectEqual(redirEntry, requestString) {
   if (redirEntry.caseSensitive === true) {
-    return pathname === redirEntry.from;
+    return requestString === redirEntry.from;
   } else {
-    return pathname.toUpperCase() === redirEntry.from.toUpperCase();
+    return requestString.toUpperCase() === redirEntry.from.toUpperCase();
   }
 }
 
-export async function handleRequest(request) {
+// Will return the request string to be matched, which by default will be path 
+// only, unless the redirEntry.includeParams property is set to true. If 
+// 'redirEntry.includeParams: true', then the concatenated path and query 
+// string (parameters) will be returned.
+function getRequestString(url, redirEntry) {
+  let { pathname, search } = url; 
+  let str = pathname;
+  if (redirEntry.includeParams === true) {
+    str = pathname.concat(search);
+  }
+  return str;
+}
+
+async function getRedirectsForHostname(hostname, descriptions) {
+  let redirects = []
+  // try to match zone with end of hostname
+  // zones must not include sub-domain of another zone (sub-domain/domain)
+  let kvList = await descriptions.list({ limit: 1000 });
+  let zoneKey = kvList.keys.find((key) => {
+    return hostname.endsWith(key.name);
+  })
+  if (zoneKey !== undefined) {
+    let desc = await descriptions.get(zoneKey.name, 'json');
+    if (desc) redirects = desc.redirects;
+  }
+  return redirects;
+}
+
+export async function handleRequest(request, env) {
   const url = new URL(request.url);
-  const {
-    hostname, pathname, search
-  } = url;
-
-  let desc = await descriptions.get(hostname, 'json');
-  // hostname may contain subdomain, so strip the first `.` prefix & try again
-  if (desc === null) {
-    const sans_subdomain = hostname.split('.').slice(1).join('.');
-    desc = await descriptions.get(sans_subdomain, 'json');
-  }
-  // we stop after one check, and 404 otherwise we'd check for `co.uk` and such
-  if (desc === null) {
-    // no description for this domain, so 404
-    console.error(`No descriptions found for ${hostname}`);
-    return respondWith404();
-  }
-
-  const found = desc.redirects.find((r) => {
+  const redirects = await getRedirectsForHostname(url.hostname, env.descriptions);
+  const found = redirects.find((r) => {
     // we've got a regex! (N.B. Regexes must be prefixed by '^')
     if (r.from[0] === '^') {
-      const matches = pathname.concat(search).match(getRedirectRegEx(r));
+      const matches = getRequestString(url, r).match(getRedirectRegEx(r));
       return matches !== null;
     }
     // otherwise, just do a simple string comparison
-    return isRedirectEqual(r, pathname);
+    return isRedirectEqual(r, getRequestString(url, r));
   });
 
   if (found !== undefined) {
     let redir_to = found.to;
     // if we have a regex, though, we need to (possibly) populate replacements
     if (found.from[0] === '^') {
-      redir_to = pathname.concat(search).replace(getRedirectRegEx(found), found.to);
+      redir_to = getRequestString(url, found).replace(getRedirectRegEx(found), found.to);
     }
     return Response.redirect(redir_to, ('status' in found ? found.status : default_status));
   }
