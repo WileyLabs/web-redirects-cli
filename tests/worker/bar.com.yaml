@@ -4,4 +4,3 @@ redirects:
 # currently yaml files require at least one rule otherwise script breaks
 - from: /xyz.html
   to: https://foo.com/xyz.html
-  
