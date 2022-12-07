@@ -22,15 +22,10 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Install FOSSA CLI
-      - name: Install FOSSA CLI
-        run: "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash"
-
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        env:
-          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
-        run: fossa analyze
+      - uses: actions/checkout@v3
+      # Install FOSSA CLI
+      - name: Official FOSSA Action
+        uses: fossas/fossa-action@v1.3.1
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}
