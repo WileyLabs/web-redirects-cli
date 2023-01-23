@@ -1,5 +1,7 @@
 node_modules/
 .cache-db/
+.env
 
-# directory for local testing of domain redirect JSON docs
+# directories for local testing of domain redirect JSON/YAML docs
 domains/
+redirects/
