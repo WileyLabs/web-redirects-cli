@@ -1,0 +1,8 @@
+name: wiley.com
+fallthrough: true
+redirects: 
+- from: ^/testcase1/(.*)
+  to: https://fallthrough.com/testcase1/$1
+
+- from: /testcase2$
+  to: https://fallthrough.com/testcase2

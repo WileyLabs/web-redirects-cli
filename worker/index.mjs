@@ -1,6 +1,3 @@
-/* eslint-disable no-restricted-globals */
-/* globals descriptions */
-
 const default_status = 301;
 
 function respondWith404() {
@@ -22,17 +19,16 @@ function getRedirectRegEx(redirEntry) {
 function isRedirectEqual(redirEntry, requestString) {
   if (redirEntry.caseSensitive === true) {
     return requestString === redirEntry.from;
-  } else {
-    return requestString.toUpperCase() === redirEntry.from.toUpperCase();
   }
+  return requestString.toUpperCase() === redirEntry.from.toUpperCase();
 }
 
-// Will return the request string to be matched, which by default will be path 
-// only, unless the redirEntry.includeParams property is set to true. If 
-// 'redirEntry.includeParams: true', then the concatenated path and query 
+// Will return the request string to be matched, which by default will be path
+// only, unless the redirEntry.includeParams property is set to true. If
+// 'redirEntry.includeParams: true', then the concatenated path and query
 // string (parameters) will be returned.
 function getRequestString(url, redirEntry) {
-  let { pathname, search } = url; 
+  const { pathname, search } = url;
   let str = pathname;
   if (redirEntry.includeParams === true) {
     str = pathname.concat(search);
@@ -40,25 +36,22 @@ function getRequestString(url, redirEntry) {
   return str;
 }
 
-async function getRedirectsForHostname(hostname, descriptions) {
-  let redirects = []
+async function getValuesForHostname(hostname, descriptions) {
   // try to match zone with end of hostname
   // zones must not include sub-domain of another zone (sub-domain/domain)
-  let kvList = await descriptions.list({ limit: 1000 });
-  let zoneKey = kvList.keys.find((key) => {
-    return hostname.endsWith(key.name);
-  })
+  const kvList = await descriptions.list({ limit: 1000 });
+  const zoneKey = kvList.keys.find((key) => hostname.endsWith(key.name));
   if (zoneKey !== undefined) {
-    let desc = await descriptions.get(zoneKey.name, 'json');
-    if (desc) redirects = desc.redirects;
+    return descriptions.get(zoneKey.name, 'json');
   }
-  return redirects;
+  // always return empty redirects array
+  return { redirects: [] };
 }
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
-  const redirects = await getRedirectsForHostname(url.hostname, env.descriptions);
-  const found = redirects.find((r) => {
+  const zone = await getValuesForHostname(url.hostname, env.descriptions);
+  const found = zone.redirects.find((r) => {
     // we've got a regex! (N.B. Regexes must be prefixed by '^')
     if (r.from[0] === '^') {
       const matches = getRequestString(url, r).match(getRedirectRegEx(r));
@@ -76,6 +69,11 @@ export async function handleRequest(request, env) {
     }
     return Response.redirect(redir_to, ('status' in found ? found.status : default_status));
   }
+  if (zone.fallthrough === true) {
+    // fall through to the origin server
+    return fetch(request);
+  }
+  // default behaviour - no fallthrough
   return respondWith404();
 }
 
