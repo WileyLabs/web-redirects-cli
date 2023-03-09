@@ -1,8 +1,11 @@
-import { handleRequest } from "../../worker/index.mjs";
-import yaml from "js-yaml";
-import path from "path";
-import { readFileSync } from "fs";
-import { expect, jest, test, beforeAll, beforeEach, afterEach, describe } from '@jest/globals';
+/* globals descriptions getMiniflareBindings */
+import yaml from 'js-yaml';
+import path from 'path';
+import { readFileSync } from 'fs';
+import {
+  expect, jest, test, beforeAll, describe
+} from '@jest/globals';
+import { handleRequest } from '../../worker/index';
 
 const okRequests = [
   'https://wiley.com/200',
@@ -15,34 +18,33 @@ const loadRedirectData = async (zone) => {
   const description = yaml.load(readFileSync(filepath));
   // 'descriptions' namespace defined in jest.config.js
   await descriptions.put(zone, JSON.stringify(description));
-}
+};
 
 const makeRequest = async (url) => {
   const env = getMiniflareBindings();
   const req = new Request(url);
   const res = await handleRequest(req, env);
-  let result = {};
+  const result = {};
   result.status = res.status;
   result.location = res.headers.get('Location');
   return result;
-}
+};
 
 const redirectTest = async (url, expectedLocation, expectedStatus) => {
-  let { status, location } = await makeRequest(url);
-  // console.log(`DEBUG: url = ${url}; expectedStatus = ${expectedStatus}; expectedLocation = ${expectedLocation}; actualStatus = ${status}; actualLocation = ${location}`);
+  const { status, location } = await makeRequest(url);
   // always check for http status match
   expect(status).toBe(expectedStatus);
   // only check location for 3xx responses
   if (status > 299 && status < 400) {
     expect(location).toBe(expectedLocation);
   }
-}
+};
 
 describe('worker tests', () => {
   beforeAll(async () => {
-    loadRedirectData("foo.com");
-    loadRedirectData("bar.com");
-    loadRedirectData("wiley.com");
+    loadRedirectData('foo.com');
+    loadRedirectData('bar.com');
+    loadRedirectData('wiley.com');
 
     const fetchSpy = jest.spyOn(globalThis, 'fetch');
     fetchSpy.mockImplementation((input) => {
@@ -160,8 +162,8 @@ describe('worker tests', () => {
   // // ...but not the level after that [old behaviour]
   // test('check sub-domain doesn\'t match (sub-)domain 2 levels up', async () => {
   //   await redirectTest(
-  //     'http://www.test.foo.com/1234a.html', 
-  //     null, 
+  //     'http://www.test.foo.com/1234a.html',
+  //     null,
   //     404
   //   );
   // });
@@ -178,8 +180,8 @@ describe('worker tests', () => {
   // TODO
   // test('check short hostname', async () => {
   //   await redirectTest(
-  //     'http://localhost/1234a.html', 
-  //     null, 
+  //     'http://localhost/1234a.html',
+  //     null,
   //     404
   //   );
   // });
@@ -319,7 +321,8 @@ describe('worker tests', () => {
     );
   });
 
-  // adding query string to the request pathname for comparision, and case-sensitive matching on query parameter
+  // adding query string to the request pathname for comparision,
+  // and case-sensitive matching on query parameter
   test('case-sensitive match on query parameter - match #1', async () => {
     await redirectTest(
       'http://www.foo.com/params2a.html?BAR=456&foo=123&something=Else',
@@ -328,7 +331,8 @@ describe('worker tests', () => {
     );
   });
 
-  // adding query string to the request pathname for comparision, and case-sensitive matching on query parameter
+  // adding query string to the request pathname for comparision,
+  // and case-sensitive matching on query parameter
   test('case-insensitive match on query parameter - match #1', async () => {
     await redirectTest(
       'http://www.foo.com/params2a.html?BAR=456&FoO=123&something=Else',
@@ -337,7 +341,8 @@ describe('worker tests', () => {
     );
   });
 
-  // adding query string to the request pathname for comparision, and case-sensitive matching on query parameter
+  // adding query string to the request pathname for comparision,
+  // and case-sensitive matching on query parameter
   test('case-sensitive match on query parameter - match', async () => {
     await redirectTest(
       'http://www.foo.com/params2b.html?BAR=456&foo=123&something=Else',
@@ -346,7 +351,8 @@ describe('worker tests', () => {
     );
   });
 
-  // adding query string to the request pathname for comparision, and case-sensitive matching on query parameter
+  // adding query string to the request pathname for comparision,
+  // and case-sensitive matching on query parameter
   test('case-sensitive match on query parameter - fail', async () => {
     await redirectTest(
       'http://www.foo.com/params2b.html?BAR=456&FoO=123&something=Else',

@@ -1,6 +1,3 @@
-/* eslint-disable no-restricted-globals */
-/* globals descriptions */
-
 const default_status = 301;
 
 function respondWith404() {
@@ -22,17 +19,16 @@ function getRedirectRegEx(redirEntry) {
 function isRedirectEqual(redirEntry, requestString) {
   if (redirEntry.caseSensitive === true) {
     return requestString === redirEntry.from;
-  } else {
-    return requestString.toUpperCase() === redirEntry.from.toUpperCase();
   }
+  return requestString.toUpperCase() === redirEntry.from.toUpperCase();
 }
 
-// Will return the request string to be matched, which by default will be path 
-// only, unless the redirEntry.includeParams property is set to true. If 
-// 'redirEntry.includeParams: true', then the concatenated path and query 
+// Will return the request string to be matched, which by default will be path
+// only, unless the redirEntry.includeParams property is set to true. If
+// 'redirEntry.includeParams: true', then the concatenated path and query
 // string (parameters) will be returned.
 function getRequestString(url, redirEntry) {
-  let { pathname, search } = url; 
+  const { pathname, search } = url;
   let str = pathname;
   if (redirEntry.includeParams === true) {
     str = pathname.concat(search);
