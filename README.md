@@ -105,8 +105,9 @@ will (or have) setup in Cloudflare and use the following format:
 
 ```json
 {
-  "cloudflare:id":"z14...r72",
-  "name":"example.com",
+  "cloudflare:id": "z14...r72",
+  "fallthrough": false,
+  "name": "example.com",
   "redirects": [
     {
       "from": "/(.*)",
@@ -117,11 +118,16 @@ will (or have) setup in Cloudflare and use the following format:
       "from": "/only-on-www",
       "to": "https://example.org/www-was-here",
       "status": 301,
-      "caseSensitive": true
+      "caseSensitive": false,
+      "includeParams": false
     }
   ]
 }
 ```
+
+The `fallthrough` key, if set to true - allows requests that are not redirected 
+to continue processing (e.g. serve content from a defined DNS entry) - rather
+than the default behaviour (`"fallthrough": false`) which will return a 404 response.
 
 The `redirects.base` key, if absent is presumed to be `*${name}/*` when
 creating Page Rule based redirects.
@@ -129,6 +135,12 @@ creating Page Rule based redirects.
 The `redirects.status` key, if not specified has a default value of `301`.
 
 The `redirects.caseSensitive` key, if not specified has default value of `false`.
+
+The `redirects.includeParams` key, if not specified has default value of `false`.
+By default only the request path will be matched. If `"includeParams": true` then
+the request query string will be included in the redirect matching.
+
+includeParams
 
 ## License
 
