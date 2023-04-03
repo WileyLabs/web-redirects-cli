@@ -36,13 +36,26 @@ function getRequestString(url, redirEntry) {
   return str;
 }
 
+/*
+ * Fetch the JSON data for a given hostname. If no data is found, an empty
+ * object is returned. Key matching performed on sub-domains of hostname
+ * ignoring any 'www' prefix, and the TLD.
+ */
 async function getValuesForHostname(hostname, descriptions) {
-  // try to match zone with end of hostname
-  // zones must not include sub-domain of another zone (sub-domain/domain)
-  const kvList = await descriptions.list({ limit: 1000 });
-  const zoneKey = kvList.keys.find((key) => hostname.endsWith(key.name));
-  if (zoneKey !== undefined) {
-    return descriptions.get(zoneKey.name, 'json');
+  const parts = hostname.split('.');
+  if (parts[0] === 'www') {
+    parts.splice(0, 1);
+  }
+  const len = parts.length;
+  for (let i = 0; i < len; i += 1) {
+    const zone = parts.slice(i, len).join('.');
+    // don't output last element (i.e. the TLD) - this can be ignored
+    if (len - i > 1) {
+      // NOTE: we need to process this synchronously, hence the await
+      /* eslint no-await-in-loop: 0 */
+      const zoneJson = await descriptions.get(zone, 'json');
+      if (zoneJson) return zoneJson;
+    }
   }
   // always return empty redirects array
   return { redirects: [] };
