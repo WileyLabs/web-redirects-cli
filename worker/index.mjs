@@ -1,4 +1,7 @@
+import { parseDomain } from 'parse-domain';
+
 const default_status = 301;
+const empty_redirects = { redirects: [] };
 
 function respondWith404() {
   return new Response('Not Found', { statusText: 'Not Found', status: 404 });
@@ -42,22 +45,37 @@ function getRequestString(url, redirEntry) {
  * ignoring any 'www' prefix, and the TLD.
  */
 async function getValuesForHostname(hostname, descriptions) {
-  const parts = hostname.split('.');
-  if (parts[0] === 'www') {
-    parts.splice(0, 1);
+  const { subDomains, domain, topLevelDomains } = parseDomain(hostname);
+  // catch unparseable hostnames
+  if (!subDomains || !domain || !topLevelDomains) {
+    console.error(`INVALID: ${hostname}`);
+    return empty_redirects;
   }
-  const len = parts.length;
-  for (let i = 0; i < len; i += 1) {
-    const zone = parts.slice(i, len).join('.');
-    // don't output last element (i.e. the TLD) - this can be ignored
-    if (len - i > 1) {
-      // NOTE: we need to process this synchronously, hence the await
-      /* eslint no-await-in-loop: 0 */
-      const zoneJson = await descriptions.get(zone, 'json');
-      if (zoneJson) return zoneJson;
+  // check each subdomain for matching KV key, plus apex domain,
+  // but ignoring first 'www' subdomain if present
+  if (subDomains.length > 0 && subDomains[0] === 'www') {
+    subDomains.shift();
+  }
+  const apex = `${domain}.${topLevelDomains.join('.')}`;
+  while (subDomains.length > 0) {
+    const sub = `${subDomains.join('.')}.${apex}`;
+    // NOTE: we need to process subdomains synchronously, hence the await
+    /* eslint no-await-in-loop: 0 */
+    const json = await descriptions.get(sub, 'json');
+    if (json) {
+      console.info(`FOUND: host = ${hostname}; key = ${sub}`);
+      return json; // return on first match ('deepest' subdomain)
     }
+    subDomains.shift();
   }
-  // always return empty redirects array
+  // no match  so check apex
+  const json = await descriptions.get(apex, 'json');
+  if (json) {
+    console.info(`FOUND: host = ${hostname}; key = ${apex}`);
+    return json;
+  }
+  // always return empty redirects array, even if no matches
+  console.info(`NOT FOUND: ${hostname}`);
   return { redirects: [] };
 }
 
