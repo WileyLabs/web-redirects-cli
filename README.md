@@ -140,7 +140,69 @@ The `redirects.includeParams` key, if not specified has default value of `false`
 By default only the request path will be matched. If `"includeParams": true` then
 the request query string will be included in the redirect matching.
 
-includeParams
+## Deployments (Using Wrangler)
+
+With the ongoing development of the worker script, and the inclusion of NodeJS dependencies
+it has been necessary to use Wrangler to deploy changes. As a result the script should be deployed
+as described here.
+
+### Wrangler Installation
+
+Wrangler v2 should be installed for the deployment of the `web-redirects-cli` worker. 
+
+Find instructions here: https://developers.cloudflare.com/workers/wrangler/install-and-update/
+
+```
+> wrangler -v
+```
+
+### Wrangler Configuration (wrangler.toml)
+
+The `wrangler.toml` file should be the 'source of truth' for the Worker configuration.
+Though we won't store worker route/custom domain information here - that will be managed 
+via the `web-redirects-cli` CLI and redirects YAML files.
+
+Find more details here: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+### Deploying Changes
+
+To deploy the worker to production or non-production you will need to login via `wrangler`
+
+```
+> wrangler login 
+...
+```
+
+This will redirect you to your default browser - to login to Cloudflare and grant authorization to `wrangler`.
+Once logged in you can check your current access using the `whoami` sub-command.
+
+```
+> wrangler whoami
+...
+```
+
+If required, you can log out after completing a deployment.
+
+```
+> wrangler logout
+```
+
+By default Wrangler will publish Worker script changes using a non-production service name
+(the default configuration defined in `wrangler.toml`). To deploy using the production service name, the environment
+must be specified:
+
+Default (non-prod)
+```
+> wrangler publish
+```
+
+Deploy to Production
+```
+> wrangler publish --env production
+```
+
+
+
 
 ## License
 

@@ -378,4 +378,22 @@ describe('worker tests', () => {
       200
     );
   });
+
+  // invalid host test (to test error handling)
+
+  test('invalid host #1', async () => {
+    await redirectTest(
+      'http://localhost:8080/',
+      '',
+      404
+    );
+  });
+
+  test('invalid host #2', async () => {
+    await redirectTest(
+      'https://wrox.x',
+      '',
+      404
+    );
+  });
 });

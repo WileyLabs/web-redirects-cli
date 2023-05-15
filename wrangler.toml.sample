@@ -1,0 +1,26 @@
+#
+# worker configuration for web-redirects-cli
+#
+# N.B.: Don't configure routes/custom domains here.
+# Worker triggers should be set-up by the web-redirects-cli using the Cloudflare API.
+# This means that the configration (where required) can be stored in the redirects
+# YAML files.
+#
+
+main = "worker/index.mjs"
+compatibility_date = "2023-04-06"
+
+# default deployment name (nonprod)
+name = "redir-nonprod"
+account_id = "......"
+kv_namespaces = [
+  { binding = "descriptions", id = "......" }
+]
+
+# production profile
+[env.production]
+name = "redir"
+account_id = "......"
+kv_namespaces = [
+  { binding = "descriptions", id = "......" }
+]

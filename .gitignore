@@ -1,6 +1,7 @@
 node_modules/
 .cache-db/
 .env
+wrangler.toml
 
 # directories for local testing of domain redirect JSON/YAML docs
 domains/
