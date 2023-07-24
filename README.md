@@ -201,9 +201,6 @@ Deploy to Production
 > wrangler publish --env production
 ```
 
-
-
-
 ## License
 
 MIT
