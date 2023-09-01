@@ -11,7 +11,7 @@ const chalk = require('chalk');
 const { table, getBorderCharacters } = require('table');
 const { diff } = require('deep-object-diff');
 const inquirer = require('inquirer');
-const level = require('level');
+const { Level } = require('level');
 const uuid = require('uuid');
 const YAML = require('js-yaml');
 
@@ -44,7 +44,7 @@ exports.handler = (argv) => {
     error('Which domain where you wanting to show redirects for?');
   } else {
     // setup a local level store for key/values (mostly)
-    const db = level(`${process.cwd()}/.cache-db`);
+    const db = new Level(`${process.cwd()}/.cache-db`);
 
     db.get(argv.domain)
       .then((zone_id) => {

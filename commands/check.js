@@ -10,7 +10,7 @@ const axios = require('axios');
 const chalk = require('chalk');
 const { updatedDiff } = require('deep-object-diff');
 const inquirer = require('inquirer');
-const level = require('level');
+const { Level } = require('level');
 const YAML = require('js-yaml');
 
 const {
@@ -119,7 +119,7 @@ exports.handler = (argv) => {
       });
   } else {
     // setup a local level store for key/values (mostly)
-    const db = level(`${process.cwd()}/.cache-db`);
+    const db = new Level(`${process.cwd()}/.cache-db`);
 
     db.get(argv.domain)
       .then((zone_id) => {
