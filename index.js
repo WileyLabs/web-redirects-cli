@@ -7,15 +7,25 @@
  * @license MIT
  */
 
-const fs = require('fs');
+import * as fs from 'node:fs';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import * as describe from './commands/describe.js';
+import * as check from './commands/check.js';
+import * as dash from './commands/dash.js';
+import * as dns from './commands/dns.js';
+import * as compare from './commands/compare.js';
+import * as domains from './commands/domains.js';
+import * as show from './commands/show.js';
+import * as worker from './commands/worker.js';
 
 // load environment variables from `.env` file (if any)
-require('dotenv').config();
+import 'dotenv/config';
 
 /**
  * Command handler of awesomeness.
  */
-require('yargs')
+yargs(hideBin(process.argv))
   .scriptName('redirects')
   .env('WR')
   .usage('$0 <cmd> [args]')
@@ -42,21 +52,21 @@ require('yargs')
     }
   })
   // Describe a redirect as a YAML file
-  .command(require('./commands/describe'))
-  // List zones in current Cloudflare account
-  .command(require('./commands/domains'))
-  // Show current redirects for [domain]
-  .command(require('./commands/show'))
-  // Check [domain]'s settings with Cloudflare's
-  .command(require('./commands/check'))
-  // Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
-  .command(require('./commands/compare'))
-  // Mange the DNS records for [domain]
-  .command(require('./commands/dns'))
-  // Output a link to the Cloudflare Dashboard
-  .command(require('./commands/dash'))
-  // Setup Worker and KV stuff for large redirects
-  .command(require('./commands/worker'))
+  .command(describe)
+  // // List zones in current Cloudflare account
+  .command(domains)
+  // // Show current redirects for [domain]
+  .command(show)
+  // // Check [domain]'s settings with Cloudflare's
+  .command(check)
+  // // Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
+  .command(compare)
+  // // Mange the DNS records for [domain]
+  .command(dns)
+  // // Output a link to the Cloudflare Dashboard
+  .command(dash)
+  // // Setup Worker and KV stuff for large redirects
+  .command(worker)
   .demandCommand(1, '')
   .alias('h', 'help')
   .alias('v', 'version')

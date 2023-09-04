@@ -3,16 +3,14 @@
  * @license MIT
  */
 
-const fs = require('fs');
-const path = require('path');
-
-const axios = require('axios');
-const chalk = require('chalk');
-const inquirer = require('inquirer');
-const { Level } = require('level');
-const YAML = require('js-yaml');
-
-const {
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import axios from 'axios';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { Level } from 'level';
+import * as YAML from 'js-yaml';
+import {
   convertRedirectToPageRule,
   convertToIdValueObjectArray,
   createTheseDNSRecords,
@@ -21,7 +19,7 @@ const {
   gatherZones,
   outputPageRulesAsText,
   warn
-} = require('../lib/shared');
+} from '../lib/shared.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -194,10 +192,10 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
 /**
  * Lists available Zones/Sites in Cloudflare
  */
-exports.command = ['domains', 'zones'];
-exports.describe = 'List domains in the current Cloudflare account';
+const command = ['domains', 'zones'];
+const describe = 'List domains in the current Cloudflare account';
 // exports.builder = (yargs) => {};
-exports.handler = (argv) => {
+const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   gatherZones(argv.accountId)
     .then((all_zones) => {
@@ -301,4 +299,8 @@ exports.handler = (argv) => {
         console.error(err);
       }
     });
+};
+
+export {
+  command, describe, handler
 };

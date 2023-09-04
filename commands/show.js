@@ -3,19 +3,18 @@
  * @license MIT
  */
 
-const fs = require('fs');
-const path = require('path');
-
-const axios = require('axios');
-const chalk = require('chalk');
-const inquirer = require('inquirer');
-const { Level } = require('level');
-const YAML = require('js-yaml');
-
-const {
-  error, convertPageRulesToRedirects,
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import axios from 'axios';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { Level } from 'level';
+import * as YAML from 'js-yaml';
+import {
+  error,
+  convertPageRulesToRedirects,
   outputPageRulesAsText
-} = require('../lib/shared');
+} from '../lib/shared.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -24,9 +23,9 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
  * Show a specific domain name's Zone/Site info from Cloudflare + current Page
  * Rules.
  */
-exports.command = 'show <domain>';
-exports.describe = 'Show current redirects for <domain>';
-exports.builder = (yargs) => {
+const command = 'show <domain>';
+const describe = 'Show current redirects for <domain>';
+const builder = (yargs) => {
   yargs
     .option('format', {
       description: 'Output a JSON or YAML description file for all redirects.',
@@ -45,7 +44,7 @@ exports.builder = (yargs) => {
       demandOption: true
     });
 };
-exports.handler = (argv) => {
+const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     error('Which domain where you wanting to show redirects for?');
@@ -134,4 +133,8 @@ exports.handler = (argv) => {
       .catch(console.error);
     db.close();
   }
+};
+
+export {
+  command, describe, builder, handler
 };

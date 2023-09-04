@@ -1,9 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-
-const axios = require('axios');
-const chalk = require('chalk');
-const YAML = require('js-yaml');
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import axios from 'axios';
+import chalk from 'chalk';
+import * as YAML from 'js-yaml';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -11,14 +10,14 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 /**
  * Describe a redirect as a YAML file
  */
-exports.command = ['worker <domain>'];
-exports.describe = 'Setup a Cloudflare Worker for these redirects';
-exports.builder = (yargs) => yargs.demandOption('configDir')
+const command = ['worker <domain>'];
+const describe = 'Setup a Cloudflare Worker for these redirects';
+const builder = (yargs) => yargs.demandOption('configDir')
   .positional('domain', {
     describe: 'Domain to redirect',
     type: 'string'
   });
-exports.handler = (argv) => {
+const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
 
   const { configDir, domain } = argv;
@@ -64,4 +63,8 @@ exports.handler = (argv) => {
       });
     })
     .catch(console.error);
+};
+
+export {
+  command, describe, builder, handler
 };
