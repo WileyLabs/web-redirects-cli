@@ -59,4 +59,5 @@ require('yargs')
   .command(require('./commands/worker'))
   .demandCommand(1, '')
   .alias('h', 'help')
+  .alias('v', 'version')
   .argv;
