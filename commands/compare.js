@@ -14,11 +14,12 @@ import { Level } from 'level';
 import { v4 as uuidv4 } from 'uuid';
 import * as YAML from 'js-yaml';
 import {
+  purple,
   error,
   convertPageRulesToRedirects,
   convertRedirectToPageRule,
   outputPageRulesAsText
-} from '../lib/shared.js'; 
+} from '../lib/shared.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -67,7 +68,7 @@ const handler = (argv) => {
             const redir_filename = argv.configDir.contents
               .filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
             if (undefined === redir_filename) {
-              console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
+              console.log(purple(`No redirect description for ${chalk.bold(zone.name)} was found.`));
             } else {
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
               let future = YAML.load(fs.readFileSync(redir_filepath)).redirects;

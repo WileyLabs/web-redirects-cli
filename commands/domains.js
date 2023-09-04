@@ -11,6 +11,8 @@ import inquirer from 'inquirer';
 import { Level } from 'level';
 import * as YAML from 'js-yaml';
 import {
+  purple,
+  lightblue,
   convertRedirectToPageRule,
   convertToIdValueObjectArray,
   createTheseDNSRecords,
@@ -211,16 +213,16 @@ const handler = (argv) => {
 
         console.log(`${status_icon} ${chalk.bold(zone.name)} - ${chalk[zone.plan.name === 'Enterprise Website' ? 'red' : 'green'](zone.plan.name)}`);
         if (zone.status === 'pending' && !zone.paused && zone.type !== 'partial') {
-          console.log(chalk.keyword('lightblue')(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
+          console.log(lightblue(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
         }
         if (zone.status === 'pending' && !zone.paused && zone.type === 'partial') {
-          console.log(chalk.keyword('lightblue')('CNAME Setup required. See Cloudflare UX.'));
+          console.log(lightblue('CNAME Setup required. See Cloudflare UX.'));
         }
         // output a warning if there is no local description
         const redir_filename = argv.configDir.contents
           .filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
         if (undefined === redir_filename) {
-          console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
+          console.log(purple(`No redirect description for ${chalk.bold(zone.name)} was found.`));
         }
         db.put(zone.name, zone.id)
           .catch(console.error);

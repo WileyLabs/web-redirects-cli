@@ -10,12 +10,19 @@ import axios from 'axios';
 import { updatedDiff } from 'deep-object-diff';
 import inquirer from 'inquirer';
 import { Level } from 'level';
-import { error, gatherZones, warn, convertToIdValueObjectArray, outputApiError } from '../lib/shared.js'; 
+import {
+  orange,
+  error,
+  gatherZones,
+  warn,
+  convertToIdValueObjectArray,
+  outputApiError
+} from '../lib/shared.js';
 
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
     if (typeof updates[key] !== 'object') {
-      console.log(`${'  '.repeat(l)}${key}: ${chalk.green(updates[key])} (currently ${chalk.keyword('orange')(current[key])})`);
+      console.log(`${'  '.repeat(l)}${key}: ${chalk.green(updates[key])} (currently ${orange(current[key])})`);
     } else {
       console.log(`${'  '.repeat(l)}${key}:`);
       outputDifferences(updates[key], current[key], l + 1);

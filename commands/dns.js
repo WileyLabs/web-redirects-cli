@@ -9,6 +9,7 @@ import SimpleTable from 'cli-simple-table';
 import inquirer from 'inquirer';
 import { Level } from 'level';
 import {
+  orange,
   collectReplacementRecords,
   error,
   buildRequiredDNSRecordsForPagerules,
@@ -75,13 +76,13 @@ const handler = (argv) => {
             table.header('Type', 'Name', 'Content', 'TTL', 'Proxy Status');
             dns_records.forEach((line) => {
               const line_array = [line.type, line.name, line.content, line.ttl,
-                line.proxied ? chalk.keyword('orange')(line.proxied) : line.proxied];
+                line.proxied ? orange(line.proxied) : line.proxied];
               if (hasDNSRecord(required_dns_records, line)) {
                 properly_proxied.push(line);
                 table.row(...line_array.map((i) => chalk.green(i)));
               } else if (hasConflictingDNSRecord(required_dns_records, line)) {
                 conflicts.push(line);
-                table.row(...line_array.map((i) => chalk.keyword('orange')(i)));
+                table.row(...line_array.map((i) => orange(i)));
               } else {
                 table.row(...line_array.map((i) => chalk.white(i)));
               }
@@ -94,10 +95,10 @@ const handler = (argv) => {
             // they should stay.
             required_dns_records.forEach((line) => {
               const line_array = [line.type, line.name, line.content, line.ttl,
-                line.proxied ? chalk.keyword('orange')(line.proxied) : line.proxied];
+                line.proxied ? orange(line.proxied) : line.proxied];
               if (!hasDNSRecord(dns_records, line) && !hasConflictingDNSRecord(dns_records, line)) {
                 conflicts.push(line);
-                table.row(...line_array.map((i) => chalk.keyword('orange')(i)));
+                table.row(...line_array.map((i) => orange(i)));
               }
             });
 
