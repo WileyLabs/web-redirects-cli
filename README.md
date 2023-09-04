@@ -193,12 +193,12 @@ must be specified:
 
 Default (non-prod)
 ```
-> wrangler publish
+> wrangler deploy
 ```
 
 Deploy to Production
 ```
-> wrangler publish --env production
+> wrangler deploy --env production
 ```
 
 ## License

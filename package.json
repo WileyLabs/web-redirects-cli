@@ -1,6 +1,6 @@
 {
   "name": "web-redirects-cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Managing HTTP(S) redirects via JSON docs",
   "main": "index.js",
   "scripts": {
@@ -24,30 +24,30 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.21.4",
+    "axios": "^1.5.0",
     "chalk": "^4.1.2",
-    "cli-simple-table": "1.0.0",
-    "deep-object-diff": "^1.1.0",
-    "dotenv": "^10.0.0",
+    "cli-simple-table": "^1.1.1",
+    "deep-object-diff": "^1.1.9",
+    "dotenv": "^16.3.1",
     "inquirer": "^8.1.5",
     "js-yaml": "^4.1.0",
-    "level": "^7.0.0",
+    "level": "^8.0.0",
     "lodash.isequal": "^4.5.0",
     "lodash.uniqwith": "^4.5.0",
     "open": "^8.2.1",
     "parse-domain": "^7.0.1",
-    "table": "^6.7.1",
-    "uuid": "^8.3.2",
-    "yargs": "^17.1.1"
+    "table": "^6.8.1",
+    "uuid": "^9.0.0",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@jest/globals": "^29.5.0",
+    "@jest/globals": "^29.6.4",
     "cross-env": "^7.0.3",
-    "eslint": "^7.32.0",
-    "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.24.2",
-    "jest": "^29.5.0",
-    "jest-environment-miniflare": "^2.13.0",
-    "wrangler": "^2.20.0"
+    "eslint": "^8.48.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "jest": "^29.6.4",
+    "jest-environment-miniflare": "^2.14.1",
+    "wrangler": "^3.6.0"
   }
 }

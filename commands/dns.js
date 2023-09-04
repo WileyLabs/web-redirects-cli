@@ -7,7 +7,7 @@ const axios = require('axios');
 const chalk = require('chalk');
 const SimpleTable = require('cli-simple-table');
 const inquirer = require('inquirer');
-const level = require('level');
+const { Level } = require('level');
 
 const {
   collectReplacementRecords,
@@ -43,7 +43,7 @@ exports.handler = (argv) => {
     error('Which domain where you wanting to work on?');
   } else {
     // setup a local level store for key/values (mostly)
-    const db = level(`${process.cwd()}/.cache-db`);
+    const db = new Level(`${process.cwd()}/.cache-db`);
 
     db.get(argv.domain)
       .then((zone_id) => {

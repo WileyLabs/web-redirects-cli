@@ -9,7 +9,7 @@ const path = require('path');
 const axios = require('axios');
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const level = require('level');
+const { Level } = require('level');
 const YAML = require('js-yaml');
 
 const {
@@ -87,7 +87,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
 
               // update domain to zone.id map in local database
-              const db = level(`${process.cwd()}/.cache-db`);
+              const db = Level(`${process.cwd()}/.cache-db`);
               db.put(domain, zone.id)
                 .catch(console.error);
               db.close();
@@ -202,7 +202,7 @@ exports.handler = (argv) => {
   gatherZones(argv.accountId)
     .then((all_zones) => {
       // setup a local level store for key/values (mostly)
-      const db = level(`${process.cwd()}/.cache-db`);
+      const db = new Level(`${process.cwd()}/.cache-db`);
 
       console.log(`${chalk.bold(all_zones.length)} Zones:`);
       // loop through the returned zones and store a domain => id mapping
