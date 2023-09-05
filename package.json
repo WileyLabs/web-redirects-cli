@@ -30,7 +30,7 @@
     "cli-simple-table": "^1.1.1",
     "deep-object-diff": "^1.1.9",
     "dotenv": "^16.3.1",
-    "inquirer": "^8.1.5",
+    "inquirer": "^9.2.10",
     "js-yaml": "^4.1.0",
     "level": "^8.0.0",
     "lodash": "^4.17.21",
