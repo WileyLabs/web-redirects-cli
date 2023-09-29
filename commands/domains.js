@@ -18,10 +18,10 @@ import {
   createTheseDNSRecords,
   buildRequiredDNSRecordsForPagerules,
   error,
-  gatherZones,
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
+import { getZonesByAccount } from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -199,7 +199,7 @@ const describe = 'List domains in the current Cloudflare account';
 // exports.builder = (yargs) => {};
 const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
-  gatherZones(argv.accountId)
+  getZonesByAccount(argv.accountId)
     .then((all_zones) => {
       // setup a local level store for key/values (mostly)
       const db = new Level(`${process.cwd()}/.cache-db`);

@@ -13,11 +13,11 @@ import { Level } from 'level';
 import {
   orange,
   error,
-  gatherZones,
   warn,
   convertToIdValueObjectArray,
   outputApiError
 } from '../lib/shared.js';
+import { getZonesByAccount } from '../lib/cloudflare.js';
 
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
@@ -102,7 +102,7 @@ const builder = (yargs) => {
 const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
-    gatherZones(argv.accountId)
+    getZonesByAccount(argv.accountId)
       .then((all_zones) => {
         function another() {
           const zone = all_zones.shift(); // one at a time
