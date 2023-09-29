@@ -2,25 +2,27 @@
  * @copyright 2020 John Wiley & Sons, Inc.
  * @license MIT
  */
-
-const fs = require('fs');
-const path = require('path');
-
-const axios = require('axios');
-const chalk = require('chalk');
-const { updatedDiff } = require('deep-object-diff');
-const inquirer = require('inquirer');
-const { Level } = require('level');
-const YAML = require('js-yaml');
-
-const {
-  error, gatherZones, warn, convertToIdValueObjectArray, outputApiError
-} = require('../lib/shared');
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import chalk from 'chalk';
+import * as YAML from 'js-yaml';
+import axios from 'axios';
+import { updatedDiff } from 'deep-object-diff';
+import inquirer from 'inquirer';
+import { Level } from 'level';
+import {
+  orange,
+  error,
+  gatherZones,
+  warn,
+  convertToIdValueObjectArray,
+  outputApiError
+} from '../lib/shared.js';
 
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
     if (typeof updates[key] !== 'object') {
-      console.log(`${'  '.repeat(l)}${key}: ${chalk.green(updates[key])} (currently ${chalk.keyword('orange')(current[key])})`);
+      console.log(`${'  '.repeat(l)}${key}: ${chalk.green(updates[key])} (currently ${orange(current[key])})`);
     } else {
       console.log(`${'  '.repeat(l)}${key}:`);
       outputDifferences(updates[key], current[key], l + 1);
@@ -87,9 +89,9 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 /**
  * Check a [domain]'s settings and redirects
  */
-exports.command = 'check [domain]';
-exports.describe = 'Check a [domain]\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
-exports.builder = (yargs) => {
+const command = 'check [domain]';
+const describe = 'Check a [domain]\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
+const builder = (yargs) => {
   yargs
     .positional('domain', {
       type: 'string',
@@ -97,7 +99,7 @@ exports.builder = (yargs) => {
     })
     .demandOption('configDir');
 };
-exports.handler = (argv) => {
+const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     gatherZones(argv.accountId)
@@ -137,4 +139,8 @@ exports.handler = (argv) => {
       .catch(outputApiError);
     db.close();
   }
+};
+
+export {
+  command, describe, builder, handler
 };

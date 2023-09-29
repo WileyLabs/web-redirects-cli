@@ -3,18 +3,24 @@
  * @license MIT
  */
 
-const axios = require('axios');
-const chalk = require('chalk');
-const SimpleTable = require('cli-simple-table');
-const inquirer = require('inquirer');
-const { Level } = require('level');
-
-const {
+import axios from 'axios';
+import chalk from 'chalk';
+import SimpleTable from 'cli-simple-table';
+import inquirer from 'inquirer';
+import { Level } from 'level';
+import {
+  orange,
   collectReplacementRecords,
-  error, buildRequiredDNSRecordsForPagerules, createTheseDNSRecords,
-  deleteTheseDNSRecords, hasDNSRecord, hasConflictingDNSRecord,
-  outputDNSRecordsTable, outputPageRulesAsText, warn
-} = require('../lib/shared');
+  error,
+  buildRequiredDNSRecordsForPagerules,
+  createTheseDNSRecords,
+  deleteTheseDNSRecords,
+  hasDNSRecord,
+  hasConflictingDNSRecord,
+  outputDNSRecordsTable,
+  outputPageRulesAsText,
+  warn
+} from '../lib/shared.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -22,9 +28,9 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 /**
  * Mange the DNS records for <domain>
  */
-exports.command = 'dns <domain>';
-exports.describe = 'Mange the DNS records for <domain>';
-exports.builder = (yargs) => {
+const command = 'dns <domain>';
+const describe = 'Mange the DNS records for <domain>';
+const builder = (yargs) => {
   yargs
     // TODO: implement this feature
     .option('export', {
@@ -37,7 +43,7 @@ exports.builder = (yargs) => {
       describe: 'a valid domain name'
     });
 };
-exports.handler = (argv) => {
+const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     error('Which domain where you wanting to work on?');
@@ -70,13 +76,13 @@ exports.handler = (argv) => {
             table.header('Type', 'Name', 'Content', 'TTL', 'Proxy Status');
             dns_records.forEach((line) => {
               const line_array = [line.type, line.name, line.content, line.ttl,
-                line.proxied ? chalk.keyword('orange')(line.proxied) : line.proxied];
+                line.proxied ? orange(line.proxied) : line.proxied];
               if (hasDNSRecord(required_dns_records, line)) {
                 properly_proxied.push(line);
                 table.row(...line_array.map((i) => chalk.green(i)));
               } else if (hasConflictingDNSRecord(required_dns_records, line)) {
                 conflicts.push(line);
-                table.row(...line_array.map((i) => chalk.keyword('orange')(i)));
+                table.row(...line_array.map((i) => orange(i)));
               } else {
                 table.row(...line_array.map((i) => chalk.white(i)));
               }
@@ -89,10 +95,10 @@ exports.handler = (argv) => {
             // they should stay.
             required_dns_records.forEach((line) => {
               const line_array = [line.type, line.name, line.content, line.ttl,
-                line.proxied ? chalk.keyword('orange')(line.proxied) : line.proxied];
+                line.proxied ? orange(line.proxied) : line.proxied];
               if (!hasDNSRecord(dns_records, line) && !hasConflictingDNSRecord(dns_records, line)) {
                 conflicts.push(line);
-                table.row(...line_array.map((i) => chalk.keyword('orange')(i)));
+                table.row(...line_array.map((i) => orange(i)));
               }
             });
 
@@ -161,4 +167,8 @@ exports.handler = (argv) => {
       .catch(console.error);
     db.close();
   }
+};
+
+export {
+  command, describe, builder, handler
 };

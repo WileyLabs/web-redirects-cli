@@ -1,12 +1,12 @@
 /* globals describe, expect, it */
 /* eslint-disable quotes, quote-props */
 
-const {
+import {
   collectReplacementRecords,
   convertPageRulesToRedirects,
   hasConflictingDNSRecord,
   hasDNSRecord
-} = require('../../lib/shared');
+} from '../../lib/shared.js';
 
 // expects the value of `results` from the output of
 // https://api.cloudflare.com/#page-rules-for-a-zone-list-page-rules

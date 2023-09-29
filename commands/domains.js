@@ -3,16 +3,16 @@
  * @license MIT
  */
 
-const fs = require('fs');
-const path = require('path');
-
-const axios = require('axios');
-const chalk = require('chalk');
-const inquirer = require('inquirer');
-const { Level } = require('level');
-const YAML = require('js-yaml');
-
-const {
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import axios from 'axios';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { Level } from 'level';
+import * as YAML from 'js-yaml';
+import {
+  purple,
+  lightblue,
   convertRedirectToPageRule,
   convertToIdValueObjectArray,
   createTheseDNSRecords,
@@ -21,7 +21,7 @@ const {
   gatherZones,
   outputPageRulesAsText,
   warn
-} = require('../lib/shared');
+} from '../lib/shared.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -194,10 +194,10 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
 /**
  * Lists available Zones/Sites in Cloudflare
  */
-exports.command = ['domains', 'zones'];
-exports.describe = 'List domains in the current Cloudflare account';
+const command = ['domains', 'zones'];
+const describe = 'List domains in the current Cloudflare account';
 // exports.builder = (yargs) => {};
-exports.handler = (argv) => {
+const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   gatherZones(argv.accountId)
     .then((all_zones) => {
@@ -213,16 +213,16 @@ exports.handler = (argv) => {
 
         console.log(`${status_icon} ${chalk.bold(zone.name)} - ${chalk[zone.plan.name === 'Enterprise Website' ? 'red' : 'green'](zone.plan.name)}`);
         if (zone.status === 'pending' && !zone.paused && zone.type !== 'partial') {
-          console.log(chalk.keyword('lightblue')(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
+          console.log(lightblue(`Update the nameservers to: ${zone.name_servers.join(', ')}`));
         }
         if (zone.status === 'pending' && !zone.paused && zone.type === 'partial') {
-          console.log(chalk.keyword('lightblue')('CNAME Setup required. See Cloudflare UX.'));
+          console.log(lightblue('CNAME Setup required. See Cloudflare UX.'));
         }
         // output a warning if there is no local description
         const redir_filename = argv.configDir.contents
           .filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
         if (undefined === redir_filename) {
-          console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
+          console.log(purple(`No redirect description for ${chalk.bold(zone.name)} was found.`));
         }
         db.put(zone.name, zone.id)
           .catch(console.error);
@@ -301,4 +301,8 @@ exports.handler = (argv) => {
         console.error(err);
       }
     });
+};
+
+export {
+  command, describe, handler
 };

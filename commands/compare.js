@@ -3,22 +3,23 @@
  * @license MIT
  */
 
-const fs = require('fs');
-const path = require('path');
-
-const axios = require('axios');
-const chalk = require('chalk');
-const { table, getBorderCharacters } = require('table');
-const { diff } = require('deep-object-diff');
-const inquirer = require('inquirer');
-const { Level } = require('level');
-const uuid = require('uuid');
-const YAML = require('js-yaml');
-
-const {
-  error, convertPageRulesToRedirects, convertRedirectToPageRule,
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import axios from 'axios';
+import chalk from 'chalk';
+import { table, getBorderCharacters } from 'table';
+import { diff } from 'deep-object-diff';
+import inquirer from 'inquirer';
+import { Level } from 'level';
+import { v4 as uuidv4 } from 'uuid';
+import * as YAML from 'js-yaml';
+import {
+  purple,
+  error,
+  convertPageRulesToRedirects,
+  convertRedirectToPageRule,
   outputPageRulesAsText
-} = require('../lib/shared');
+} from '../lib/shared.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -26,9 +27,9 @@ axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 /**
  * Compare [configDir]'s local redirect descriptions for <domain> with Cloudflare's
  */
-exports.command = 'compare <domain>';
-exports.describe = 'Compare [configDir]\'s local redirect descriptions for <domain> with Cloudflare\'s';
-exports.builder = (yargs) => {
+const command = 'compare <domain>';
+const describe = 'Compare [configDir]\'s local redirect descriptions for <domain> with Cloudflare\'s';
+const builder = (yargs) => {
   yargs
     .positional('domain', {
       type: 'string',
@@ -37,7 +38,7 @@ exports.builder = (yargs) => {
     })
     .demandOption('configDir');
 };
-exports.handler = (argv) => {
+const handler = (argv) => {
   axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     // TODO: update this to use inquirer to list available ones to pick from?
@@ -67,7 +68,7 @@ exports.handler = (argv) => {
             const redir_filename = argv.configDir.contents
               .filter((f) => f.substr(0, zone.name.length) === zone.name)[0];
             if (undefined === redir_filename) {
-              console.log(chalk.keyword('purple')(`No redirect description for ${chalk.bold(zone.name)} was found.`));
+              console.log(purple(`No redirect description for ${chalk.bold(zone.name)} was found.`));
             } else {
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
               let future = YAML.load(fs.readFileSync(redir_filepath)).redirects;
@@ -102,7 +103,7 @@ exports.handler = (argv) => {
                   if (current[i] === undefined) {
                     // we've got a new rule
                     diff_rows.push([chalk.green('none: will add ->'), YAML.dump(future[i]), '']);
-                    modifications[uuid.v4()] = {
+                    modifications[uuidv4()] = {
                       method: 'post',
                       pagerule: {
                         status: 'active',
@@ -211,4 +212,8 @@ exports.handler = (argv) => {
       .catch(console.error);
     db.close();
   }
+};
+
+export {
+  command, describe, builder, handler
 };

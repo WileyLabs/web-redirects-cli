@@ -1,15 +1,14 @@
-const fs = require('fs');
-const path = require('path');
-
-const chalk = require('chalk');
-const YAML = require('js-yaml');
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import chalk from 'chalk';
+import * as YAML from 'js-yaml';
 
 /**
  * Describe a redirect as a YAML file
  */
-exports.command = ['describe <domain> <destination>'];
-exports.describe = 'Describe a redirect as a YAML file';
-exports.builder = (yargs) => yargs.demandOption('configDir')
+const command = ['describe <domain> <destination>'];
+const describe = 'Describe a redirect as a YAML file';
+const builder = (yargs) => yargs.demandOption('configDir')
   .positional('domain', {
     describe: 'Domain to redirect',
     type: 'string'
@@ -18,7 +17,7 @@ exports.builder = (yargs) => yargs.demandOption('configDir')
     describe: 'Destination URL for this redirect',
     type: 'string'
   });
-exports.handler = (argv) => {
+const handler = (argv) => {
   const { configDir, domain, destination } = argv;
   const redirect = YAML.dump({
     name: domain,
@@ -32,4 +31,8 @@ exports.handler = (argv) => {
     console.log(chalk.green(`The following redirect description was saved into ${filepath}:`));
     console.log(redirect);
   });
+};
+
+export {
+  command, describe, builder, handler
 };
