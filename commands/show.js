@@ -15,6 +15,7 @@ import {
   convertPageRulesToRedirects,
   outputPageRulesAsText
 } from '../lib/shared.js';
+import { getZoneById, getZonePageRulesById } from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -55,11 +56,11 @@ const handler = (argv) => {
     db.get(argv.domain)
       .then((zone_id) => {
         Promise.all([
-          axios.get(`/zones/${zone_id}`),
-          axios.get(`/zones/${zone_id}/pagerules`)
+          getZoneById(zone_id),
+          getZonePageRulesById(zone_id)
         ])
           .then((results) => {
-            const [zone, pagerules] = results.map((resp) => resp.data.result);
+            const [zone, pagerules] = results;
             let output = {};
 
             switch (argv.format) {
