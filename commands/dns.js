@@ -21,6 +21,7 @@ import {
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
+import { getZoneDnsRecordsById, getZonePageRulesById } from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -54,16 +55,10 @@ const handler = (argv) => {
     db.get(argv.domain)
       .then((zone_id) => {
         Promise.all([
-          axios.get(`/zones/${zone_id}/dns_records`),
-          axios.get(`/zones/${zone_id}/pagerules`)
+          getZoneDnsRecordsById(zone_id),
+          getZonePageRulesById(zone_id)
         ]).then((results) => {
-          const [dns_records, pagerules] = results.map((resp) => {
-            if (resp.data.success) {
-              return resp.data.result;
-            }
-            return false;
-          });
-
+          const [dns_records, pagerules] = results;
           console.log(chalk.bold('Current Page Rules:'));
           outputPageRulesAsText(pagerules);
           const required_dns_records = buildRequiredDNSRecordsForPagerules(pagerules);
