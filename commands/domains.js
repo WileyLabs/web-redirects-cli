@@ -21,7 +21,7 @@ import {
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
-import { getZonesByAccount } from '../lib/cloudflare.js';
+import { getZonesByAccount, patchZoneSettingsById } from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -33,16 +33,9 @@ function setSecuritySettings(argv, zone_id) {
     '.settings.yaml');
   try {
     const settings = YAML.load(fs.readFileSync(settings_path));
-    axios.patch(`/zones/${zone_id}/settings`,
-      { items: convertToIdValueObjectArray(settings) })
+    patchZoneSettingsById(zone_id, { items: convertToIdValueObjectArray(settings) })
       .catch((err) => {
-        if ('response' in err
-            && 'status' in err.response
-            && err.response.status === 403) {
-          error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
-        } else {
-          console.error(err);
-        }
+        console.error(`Caught error: ${err}`);
       });
   } catch (e) {
     console.error(e);
@@ -87,7 +80,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
 
               // update domain to zone.id map in local database
-              const db = Level(`${process.cwd()}/.cache-db`);
+              const db = new Level(`${process.cwd()}/.cache-db`);
               db.put(domain, zone.id)
                 .catch(console.error);
               db.close();
@@ -179,8 +172,8 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                 && err.response.status === 403) {
               error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
             } else {
-              console.error(`${err.response.status} ${err.response.statusText}`);
-              console.error(err.response.data);
+              // console.error(`${err.response.status} ${err.response.statusText}`);
+              console.error(err);
             }
           });
       } else {

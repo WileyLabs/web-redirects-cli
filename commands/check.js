@@ -12,12 +12,10 @@ import inquirer from 'inquirer';
 import { Level } from 'level';
 import {
   orange,
-  error,
   warn,
-  convertToIdValueObjectArray,
-  outputApiError
+  convertToIdValueObjectArray
 } from '../lib/shared.js';
-import { getZonesByAccount } from '../lib/cloudflare.js';
+import { getZonesByAccount, getZoneById, getZoneSettingsById, patchZoneSettingsById } from '../lib/cloudflare.js';
 
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
@@ -37,8 +35,7 @@ function checkSecurity(configDir, zone, settings, another) {
     current[s.id] = s.value;
   });
   if (configDir.contents.indexOf('.settings.yaml') > -1) {
-    const settings_path = path.join(process.cwd(), configDir.name,
-      '.settings.yaml');
+    const settings_path = path.join(process.cwd(), configDir.name, '.settings.yaml');
     try {
       const baseline = YAML.load(fs.readFileSync(settings_path));
       const updates = updatedDiff(current, baseline);
@@ -54,20 +51,12 @@ function checkSecurity(configDir, zone, settings, another) {
           default: false
         }).then((answers) => {
           if (answers.confirmUpdates) {
-            axios.patch(`/zones/${zone.id}/settings`,
-              { items: convertToIdValueObjectArray(updates) })
-              .then((resp) => {
-                if (resp.data.success) {
-                  console.log(chalk.green(`\nSuccess! ${zone.name} settings have been updated.`));
-                }
+            patchZoneSettingsById(zone.id, { items: convertToIdValueObjectArray(updates) })
+              .then(() => {
+                console.log(chalk.green(`\nSuccess! ${zone.name} settings have been updated.`));
                 if (another) another();
               }).catch((err) => {
-                if ('response' in err && 'status' in err?.response
-                    && err?.response?.status === 403) {
-                  error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
-                } else {
-                  console.error(err);
-                }
+                console.error(`Caught error: ${err}`);
               });
           } else {
             if (another) another();
@@ -108,13 +97,13 @@ const handler = (argv) => {
           const zone = all_zones.shift(); // one at a time
           if (zone) {
             // get the settings for the zone
-            axios.get(`/zones/${zone.id}/settings`)
+            getZoneSettingsById(zone.id)
               // pass all the details to checkSecurity
-              .then(async ({ data }) => {
-                if (data.success) {
-                  checkSecurity(argv.configDir, zone, data.result, another);
-                }
-              }).catch(outputApiError);
+              .then(async (data) => {
+                checkSecurity(argv.configDir, zone, data, another);
+              }).catch((err) => {
+                console.error(`Caught error: ${err}`);
+              });
           }
         }
         another();
@@ -128,15 +117,19 @@ const handler = (argv) => {
         // read redirect config file for domain
         // gather zone/domain information from Cloudflare
         Promise.all([
-          axios.get(`/zones/${zone_id}`),
-          axios.get(`/zones/${zone_id}/settings`)
+          getZoneById(zone_id),
+          getZoneSettingsById(zone_id)
         ]).then((results) => {
-          const [zone, settings] = results.map((resp) => resp.data.result);
+          const [zone, settings] = results;
           // the main event
           checkSecurity(argv.configDir, zone, settings);
-        }).catch(outputApiError);
+        }).catch((err) => {
+          console.error(`Caught error: ${err}`);
+        });
       })
-      .catch(outputApiError);
+      .catch((err) => {
+        console.error(`Caught error: ${err}`);
+      });
     db.close();
   }
 };
