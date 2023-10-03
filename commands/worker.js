@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import axios from 'axios';
 import chalk from 'chalk';
 import * as YAML from 'js-yaml';
+import { getZoneByName } from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -34,12 +35,16 @@ const handler = (argv) => {
     })
     .catch(console.error);
   // get the zone ID for the domain in question
-  axios.get(`/zones?name=${domain}`)
-    .then(({ data }) => {
-      if (data.result.length > 0) {
-        return data.result[0].id;
+  getZoneByName(domain)
+    .then((results) => {
+      switch (results.length) {
+        case 0:
+          throw new Error(`No matching zone found for ${domain}!`);
+        case 1:
+          return results[0].id;
+        default:
+          throw new Error(`Multiple matching zones found for ${domain}: ${results.map((result) => result.name)}`);
       }
-      throw JSON.stringify(data.errors);
     })
     .then((zone_id) => {
       // TODO: handle situations where more than just `www` and the apex redirect
