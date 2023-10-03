@@ -21,7 +21,7 @@ import {
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
-import { getZonesByAccount, patchZoneSettingsById } from '../lib/cloudflare.js';
+import { getAccountById, getZonesByAccount, patchZoneSettingsById } from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -265,18 +265,16 @@ const handler = (argv) => {
           if (answers.confirmCreateIntent) {
             // first, confirm which Cloudflare account (there should only be one)
             // ...so for now we just grab the first one...
-            axios.get(`/accounts/${argv.accountId}`)
+            getAccountById(argv.accountId)
               .then((account_resp) => {
-                if (account_resp.data.success) {
-                  const account_id = account_resp.data.result.id;
-                  const account_name = account_resp.data.result.name;
-                  // TODO: get confirmation on the account found?
-                  console.log(`We'll be adding these to ${account_name}.`);
+                const account_id = account_resp.id;
+                const account_name = account_resp.name;
+                // TODO: get confirmation on the account found?
+                console.log(`We'll be adding these to ${account_name}.`);
 
-                  // recursive function that will add each in sequence (based
-                  // on positive responses of course)
-                  confirmDomainAdditions(described_but_no_zone, account_name, account_id, argv);
-                }
+                // recursive function that will add each in sequence (based
+                // on positive responses of course)
+                confirmDomainAdditions(described_but_no_zone, account_name, account_id, argv);
               })
               .catch((err) => {
                 console.log(err);
