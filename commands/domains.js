@@ -21,7 +21,15 @@ import {
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
-import { getAccountById, getZonesByAccount, patchZoneSettingsById } from '../lib/cloudflare.js';
+import {
+  getAccountById,
+  getZonesByAccount,
+  patchZoneSettingsById,
+  postWorkerRoutesById,
+  postZoneByName,
+  postZonePageRulesById,
+  putWorkerKVValuesByDomain
+} from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -70,10 +78,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
     }).then((answers) => {
       if (answers.confirmCreate) {
         console.log(chalk.gray('  Creating the zone...'));
-        axios.post('/zones', {
-          name: domain,
-          account: { id: account_id }
-        })
+        postZoneByName(domain, account_id)
           .then((resp) => {
             if (resp.data.success) {
               const zone = resp.data.result;
@@ -94,11 +99,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               if (description.redirects.length > 3) {
                 // There are too many redirects for the Free Website plan,
                 // so let's setup a Worker Route...
-                axios
-                  .post(`/zones/${zone.id}/workers/routes`, {
-                    pattern: `*${domain}/*`,
-                    script: 'redir' // TODO: make this configurable!!
-                  })
+                postWorkerRoutesById(zone.id, domain, 'redir') // TODO: make 'redir' script name configurable!!
                   .then(({ data }) => {
                     if (data.success) {
                       console.log('  Worker Route configured successfully!');
@@ -107,7 +108,11 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   .catch(console.error);
                 // ...and put the redirect description in the Worker KV storage.
                 // TODO: check (earlier than here!) whether WR_WORKER_KV_NAMESPACE is set
-                axios.put(`/accounts/${argv.accountId}/storage/kv/namespaces/${argv.workerKvNamespace}/values/${domain}`, description)
+                putWorkerKVValuesByDomain(
+                  argv.accountId,
+                  argv.workerKvNamespace,
+                  domain,
+                  description)
                   .then(({ data }) => {
                     if (data.success) {
                       console.log('  Redirect Description stored in Key Value storage successfully!');
@@ -121,12 +126,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   console.log();
                   console.log(chalk.gray('  Adding these Page Rules...'));
                   outputPageRulesAsText([pagerule]);
-
-                  axios.post(`/zones/${zone.id}/pagerules`, {
-                    status: 'active',
-                    // splat in `targets` and `actions`
-                    ...pagerule
-                  })
+                  postZonePageRulesById(zone.id, pagerule)
                     .then(({ data }) => {
                       if (data.success) {
                         console.log('  Page rule successfully created!');
