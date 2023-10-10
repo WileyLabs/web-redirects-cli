@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import axios from 'axios';
 import chalk from 'chalk';
 import * as YAML from 'js-yaml';
-import { getZoneByName } from '../lib/cloudflare.js';
+import { attachServiceToHost, getZoneByName, putWorkerKVValuesByDomain } from '../lib/cloudflare.js';
 
 // foundational HTTP setup to Cloudflare's API
 axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
@@ -27,7 +27,7 @@ const handler = (argv) => {
   const description = YAML.load(fs.readFileSync(filepath));
   // push it to the KV
   // TODO: check (earlier than here!) whether WR_WORKER_KV_NAMESPACE is set
-  axios.put(`/accounts/${argv.accountId}/storage/kv/namespaces/${argv.workerKvNamespace}/values/${domain}`, description)
+  putWorkerKVValuesByDomain(argv.accountId, argv.workerKvNamespace, domain, description)
     .then(({ data }) => {
       if (data.success) {
         console.log('Redirect Description stored in Key Value storage successfully!');
@@ -50,21 +50,18 @@ const handler = (argv) => {
       // TODO: handle situations where more than just `www` and the apex redirect
       [domain, `www.${domain}`].forEach((hostname) => {
         // setup the Worker route or Worker custom domain
-        axios.put(`/accounts/${argv.accountId}/workers/domains`, {
-          zone_id,
-          hostname,
-          service: 'redir',
-          environment: 'production'
-        }).then(() => {
-          console.log(`Setup ${hostname} to point to the ${chalk.bold('redir')} Worker.`);
-        }).catch((err) => {
-          if (err.response.status === 409) {
-            console.error(`Failed to setup ${hostname} due to conflict.`);
-            console.error(err.response.data.errors);
-          } else {
-            console.error(err);
-          }
-        });
+        attachServiceToHost(argv.accountId, zone_id, hostname)
+          .then(() => {
+            console.log(`Setup ${hostname} to point to the ${chalk.bold('redir')} Worker.`);
+          })
+          .catch((err) => {
+            if (err.response.status === 409) {
+              console.error(`Failed to setup ${hostname} due to conflict.`);
+              console.error(err.response.data.errors);
+            } else {
+              console.error(err);
+            }
+          });
       });
     })
     .catch(console.error);
