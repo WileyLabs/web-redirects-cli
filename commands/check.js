@@ -14,7 +14,12 @@ import {
   warn,
   convertToIdValueObjectArray
 } from '../lib/shared.js';
-import { getZonesByAccount, getZoneById, getZoneSettingsById, patchZoneSettingsById } from '../lib/cloudflare.js';
+import {
+  getZonesByAccount,
+  getZoneById,
+  getZoneSettingsById,
+  patchZoneSettingsById
+} from '../lib/cloudflare.js';
 
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
@@ -57,8 +62,8 @@ function checkSecurity(configDir, zone, settings, another) {
               }).catch((err) => {
                 console.error(`Caught error: ${err}`);
               });
-          } else {
-            if (another) another();
+          } else if (another) {
+            another();
           }
         }).catch(console.error);
       } else {

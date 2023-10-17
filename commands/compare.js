@@ -19,7 +19,7 @@ import {
   convertRedirectToPageRule,
   outputPageRulesAsText
 } from '../lib/shared.js';
-import { 
+import {
   getZoneById,
   getZonePageRulesById,
   createPageRule,

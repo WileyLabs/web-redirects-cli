@@ -82,9 +82,11 @@ const handler = (argv) => {
                 if (!argv.export) {
                   console.dir(output, { depth: 5 });
                 } else {
-                  const redir_filepath = path.join(process.cwd(),
+                  const redir_filepath = path.join(
+                    process.cwd(),
                     argv.configDir.name,
-                    `${zone.name}.${argv.format}`);
+                    `${zone.name}.${argv.format}`
+                  );
                   const formatForOutput = argv.format === 'json'
                     ? (o) => JSON.stringify(o, null, 2)
                     : YAML.dump;

@@ -33,8 +33,11 @@ import {
 // load the `.settings.yaml` file for secuirty defaults
 function setSecuritySettings(argv, zone_id) {
   console.log(chalk.gray('  Setting security settings...'));
-  const settings_path = path.join(process.cwd(), argv.configDir.name,
-    '.settings.yaml');
+  const settings_path = path.join(
+    process.cwd(),
+    argv.configDir.name,
+    '.settings.yaml'
+  );
   try {
     const settings = YAML.load(fs.readFileSync(settings_path));
     patchZoneSettingsById(zone_id, { items: convertToIdValueObjectArray(settings) })
@@ -52,9 +55,11 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
   const filename = domains_to_add.shift();
   const domain = path.parse(filename).name;
 
-  const redir_filepath = path.join(process.cwd(),
+  const redir_filepath = path.join(
+    process.cwd(),
     argv.configDir.name,
-    filename);
+    filename
+  );
 
   let description = '';
   try {
@@ -108,7 +113,8 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   argv.accountId,
                   argv.workerKvNamespace,
                   domain,
-                  description)
+                  description
+                )
                   .then(({ data }) => {
                     if (data.success) {
                       console.log('  Redirect Description stored in Key Value storage successfully!');
