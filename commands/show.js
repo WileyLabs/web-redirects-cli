@@ -5,7 +5,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { Level } from 'level';
@@ -16,9 +15,6 @@ import {
   outputPageRulesAsText
 } from '../lib/shared.js';
 import { getZoneById, getZonePageRulesById } from '../lib/cloudflare.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 /**
  * Show a specific domain name's Zone/Site info from Cloudflare + current Page
@@ -46,7 +42,6 @@ const builder = (yargs) => {
     });
 };
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     error('Which domain where you wanting to show redirects for?');
   } else {

@@ -3,7 +3,6 @@
  * @license MIT
  */
 
-import axios from 'axios';
 import chalk from 'chalk';
 import SimpleTable from 'cli-simple-table';
 import inquirer from 'inquirer';
@@ -22,9 +21,6 @@ import {
   warn
 } from '../lib/shared.js';
 import { getZoneDnsRecordsById, getZonePageRulesById } from '../lib/cloudflare.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 /**
  * Mange the DNS records for <domain>
@@ -45,7 +41,6 @@ const builder = (yargs) => {
     });
 };
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     error('Which domain where you wanting to work on?');
   } else {

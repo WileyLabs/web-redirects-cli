@@ -5,7 +5,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
 import chalk from 'chalk';
 import { table, getBorderCharacters } from 'table';
 import { diff } from 'deep-object-diff';
@@ -28,9 +27,6 @@ import {
   updatePageRule
 } from '../lib/cloudflare.js';
 
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
-
 /**
  * Compare [configDir]'s local redirect descriptions for <domain> with Cloudflare's
  */
@@ -46,7 +42,6 @@ const builder = (yargs) => {
     .demandOption('configDir');
 };
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     // TODO: update this to use inquirer to list available ones to pick from?
     error('Which domain where you wanting to show redirects for?');

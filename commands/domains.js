@@ -5,7 +5,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { Level } from 'level';
@@ -30,9 +29,6 @@ import {
   postZonePageRulesById,
   putWorkerKVValuesByDomain
 } from '../lib/cloudflare.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 // load the `.settings.yaml` file for secuirty defaults
 function setSecuritySettings(argv, zone_id) {
@@ -191,7 +187,6 @@ const command = ['domains', 'zones'];
 const describe = 'List domains in the current Cloudflare account';
 // exports.builder = (yargs) => {};
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   getZonesByAccount(argv.accountId)
     .then((all_zones) => {
       // setup a local level store for key/values (mostly)

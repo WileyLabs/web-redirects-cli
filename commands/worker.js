@@ -1,12 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
 import chalk from 'chalk';
 import * as YAML from 'js-yaml';
 import { attachServiceToHost, getZoneByName, putWorkerKVValuesByDomain } from '../lib/cloudflare.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
 
 /**
  * Describe a redirect as a YAML file
@@ -19,8 +15,6 @@ const builder = (yargs) => yargs.demandOption('configDir')
     type: 'string'
   });
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
-
   const { configDir, domain } = argv;
   // open the redirects file
   const filepath = path.join(configDir.name, `${domain}.yaml`);

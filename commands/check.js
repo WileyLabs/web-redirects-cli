@@ -6,7 +6,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as YAML from 'js-yaml';
-import axios from 'axios';
 import { updatedDiff } from 'deep-object-diff';
 import inquirer from 'inquirer';
 import { Level } from 'level';
@@ -72,9 +71,6 @@ function checkSecurity(configDir, zone, settings, another) {
   }
 }
 
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
-
 /**
  * Check a [domain]'s settings and redirects
  */
@@ -89,7 +85,6 @@ const builder = (yargs) => {
     .demandOption('configDir');
 };
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     getZonesByAccount(argv.accountId)
       .then((all_zones) => {
