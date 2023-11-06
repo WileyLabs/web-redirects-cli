@@ -14,7 +14,10 @@ import {
   convertPageRulesToRedirects,
   outputPageRulesAsText
 } from '../lib/shared.js';
-import { getZoneById, getZonePageRulesById } from '../lib/cloudflare.js';
+import {
+  getZoneById,
+  getPageRulesByZoneId
+} from '../lib/cloudflare.js';
 
 /**
  * Show a specific domain name's Zone/Site info from Cloudflare + current Page
@@ -52,7 +55,7 @@ const handler = (argv) => {
       .then((zone_id) => {
         Promise.all([
           getZoneById(zone_id),
-          getZonePageRulesById(zone_id)
+          getPageRulesByZoneId(zone_id)
         ])
           .then((results) => {
             const [zone, pagerules] = results;

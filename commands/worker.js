@@ -2,7 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as YAML from 'js-yaml';
-import { attachServiceToHost, getZoneByName, putWorkerKVValuesByDomain } from '../lib/cloudflare.js';
+import {
+  attachServiceToHost,
+  getZonesByName,
+  putWorkerKVValuesByDomain
+} from '../lib/cloudflare.js';
 
 /**
  * Describe a redirect as a YAML file
@@ -29,7 +33,7 @@ const handler = (argv) => {
     })
     .catch(console.error);
   // get the zone ID for the domain in question
-  getZoneByName(domain)
+  getZonesByName(domain)
     .then((results) => {
       switch (results.length) {
         case 0:

@@ -21,7 +21,7 @@ import {
 } from '../lib/shared.js';
 import {
   getZoneById,
-  getZonePageRulesById,
+  getPageRulesByZoneId,
   createPageRule,
   deletePageRule,
   updatePageRule
@@ -55,7 +55,7 @@ const handler = (argv) => {
         // gather zone/domain information from Cloudflare
         Promise.all([
           getZoneById(zone_id),
-          getZonePageRulesById(zone_id)
+          getPageRulesByZoneId(zone_id)
         ]).then((results) => {
           const [zone, pagerules] = results;
 

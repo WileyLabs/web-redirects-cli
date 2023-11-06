@@ -20,7 +20,10 @@ import {
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
-import { getZoneDnsRecordsById, getZonePageRulesById } from '../lib/cloudflare.js';
+import {
+  getDnsRecordsByZoneId,
+  getPageRulesByZoneId
+} from '../lib/cloudflare.js';
 
 /**
  * Mange the DNS records for <domain>
@@ -50,8 +53,8 @@ const handler = (argv) => {
     db.get(argv.domain)
       .then((zone_id) => {
         Promise.all([
-          getZoneDnsRecordsById(zone_id),
-          getZonePageRulesById(zone_id)
+          getDnsRecordsByZoneId(zone_id),
+          getPageRulesByZoneId(zone_id)
         ]).then((results) => {
           const [dns_records, pagerules] = results;
           console.log(chalk.bold('Current Page Rules:'));

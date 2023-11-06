@@ -18,7 +18,7 @@ import {
   getZonesByAccount,
   getZoneById,
   getZoneSettingsById,
-  patchZoneSettingsById
+  updateZoneSettingsById
 } from '../lib/cloudflare.js';
 
 function outputDifferences(updates, current, l = 0) {
@@ -55,7 +55,7 @@ function checkSecurity(configDir, zone, settings, another) {
           default: false
         }).then((answers) => {
           if (answers.confirmUpdates) {
-            patchZoneSettingsById(zone.id, { items: convertToIdValueObjectArray(updates) })
+            updateZoneSettingsById(zone.id, { items: convertToIdValueObjectArray(updates) })
               .then(() => {
                 console.log(chalk.green(`\nSuccess! ${zone.name} settings have been updated.`));
                 if (another) another();

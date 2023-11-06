@@ -23,9 +23,9 @@ import {
 import {
   getAccountById,
   getZonesByAccount,
-  patchZoneSettingsById,
-  postWorkerRoutesById,
-  postZoneByName,
+  updateZoneSettingsById,
+  createWorkerRoute,
+  createZone,
   postZonePageRulesById,
   putWorkerKVValuesByDomain
 } from '../lib/cloudflare.js';
@@ -40,7 +40,7 @@ function setSecuritySettings(argv, zone_id) {
   );
   try {
     const settings = YAML.load(fs.readFileSync(settings_path));
-    patchZoneSettingsById(zone_id, { items: convertToIdValueObjectArray(settings) })
+    updateZoneSettingsById(zone_id, { items: convertToIdValueObjectArray(settings) })
       .catch((err) => {
         console.error(`Caught error: ${err}`);
       });
@@ -79,7 +79,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
     }).then((answers) => {
       if (answers.confirmCreate) {
         console.log(chalk.gray('  Creating the zone...'));
-        postZoneByName(domain, account_id)
+        createZone(domain, account_id)
           .then((resp) => {
             if (resp.data.success) {
               const zone = resp.data.result;
@@ -100,7 +100,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               if (description.redirects.length > 3) {
                 // There are too many redirects for the Free Website plan,
                 // so let's setup a Worker Route...
-                postWorkerRoutesById(zone.id, domain, 'redir') // TODO: make 'redir' script name configurable!!
+                createWorkerRoute(zone.id, domain, 'redir') // TODO: make 'redir' script name configurable!!
                   .then(({ data }) => {
                     if (data.success) {
                       console.log('  Worker Route configured successfully!');
