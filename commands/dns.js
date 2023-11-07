@@ -3,7 +3,6 @@
  * @license MIT
  */
 
-import axios from 'axios';
 import chalk from 'chalk';
 import SimpleTable from 'cli-simple-table';
 import inquirer from 'inquirer';
@@ -21,9 +20,10 @@ import {
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
+import {
+  getDnsRecordsByZoneId,
+  getPageRulesByZoneId
+} from '../lib/cloudflare.js';
 
 /**
  * Mange the DNS records for <domain>
@@ -44,7 +44,6 @@ const builder = (yargs) => {
     });
 };
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     error('Which domain where you wanting to work on?');
   } else {
@@ -54,16 +53,10 @@ const handler = (argv) => {
     db.get(argv.domain)
       .then((zone_id) => {
         Promise.all([
-          axios.get(`/zones/${zone_id}/dns_records`),
-          axios.get(`/zones/${zone_id}/pagerules`)
+          getDnsRecordsByZoneId(zone_id),
+          getPageRulesByZoneId(zone_id)
         ]).then((results) => {
-          const [dns_records, pagerules] = results.map((resp) => {
-            if (resp.data.success) {
-              return resp.data.result;
-            }
-            return false;
-          });
-
+          const [dns_records, pagerules] = results;
           console.log(chalk.bold('Current Page Rules:'));
           outputPageRulesAsText(pagerules);
           const required_dns_records = buildRequiredDNSRecordsForPagerules(pagerules);

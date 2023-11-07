@@ -5,7 +5,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
 import chalk from 'chalk';
 import { table, getBorderCharacters } from 'table';
 import { diff } from 'deep-object-diff';
@@ -20,9 +19,13 @@ import {
   convertRedirectToPageRule,
   outputPageRulesAsText
 } from '../lib/shared.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
+import {
+  getZoneById,
+  getPageRulesByZoneId,
+  createPageRule,
+  deletePageRule,
+  updatePageRule
+} from '../lib/cloudflare.js';
 
 /**
  * Compare [configDir]'s local redirect descriptions for <domain> with Cloudflare's
@@ -39,7 +42,6 @@ const builder = (yargs) => {
     .demandOption('configDir');
 };
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     // TODO: update this to use inquirer to list available ones to pick from?
     error('Which domain where you wanting to show redirects for?');
@@ -52,10 +54,10 @@ const handler = (argv) => {
         // read redirect config file for domain
         // gather zone/domain information from Cloudflare
         Promise.all([
-          axios.get(`/zones/${zone_id}`),
-          axios.get(`/zones/${zone_id}/pagerules`)
+          getZoneById(zone_id),
+          getPageRulesByZoneId(zone_id)
         ]).then((results) => {
-          const [zone, pagerules] = results.map((resp) => resp.data.result);
+          const [zone, pagerules] = results;
 
           console.log(`Zone Health Check:
   ${chalk.bold(zone.name)} - ${zone.id}
@@ -155,47 +157,31 @@ const handler = (argv) => {
                     // TODO: switch this to use Promise.all?
                     Object.keys(modifications).forEach((key) => {
                       const mod = modifications[key];
-                      // post doesn't need an ID
-                      const url = modifications[key].method === 'post'
-                        ? `/zones/${zone_id}/pagerules`
-                        : `/zones/${zone_id}/pagerules/${key}`;
-                      axios[mod.method](url,
-                        // delete doesn't need a body
-                        mod.method === 'delete' ? {} : mod.pagerule)
-                        .then((resp) => {
-                          if (resp.data.success) {
-                            switch (mod.method) {
-                              case 'delete':
-                                console.log(`Page rule ${key} has been removed.`);
-                                break;
-                              case 'post':
-                                console.log(`The following page rule was created and enabled:`);
-                                outputPageRulesAsText([resp.data.result]);
-                                break;
-                              case 'put':
-                                console.log(`Page rule ${key} has been updated:`);
-                                outputPageRulesAsText([resp.data.result]);
-                                break;
-                              default:
-                                break;
-                            }
-                          }
-                        })
-                        .catch((err) => {
-                          // TODO: handle errors better... >_<
-                          if ('response' in err
-                              && 'status' in err.response) {
-                            if (err.response.status === 403) {
-                              error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
-                            } else if (err.response.status === 400) {
-                              console.dir(err.response.data);
-                            } else {
-                              console.error(err);
-                            }
-                          } else {
-                            console.error(err);
-                          }
-                        });
+                      // TODO
+                      switch (mod.method) {
+                        case 'delete':
+                          deletePageRule(zone_id, key)
+                            .then(console.log(`Page rule ${key} has been removed.`));
+                          break;
+                        case 'post':
+                          createPageRule(zone_id, mod.pagerule)
+                            .then((response) => {
+                              console.log('The following page rule was created and enabled:');
+                              outputPageRulesAsText([response.data.result]);
+                            });
+                          break;
+                        case 'put':
+                          updatePageRule(zone_id, key, mod.pagerule)
+                            .then((response) => {
+                              console.log(`Page rule ${key} has been updated:`);
+                              outputPageRulesAsText([response.data.result]);
+                            });
+                          break;
+                        default:
+                          console.error(chalk.yellow('Unhandled pagerule method:'));
+                          console.error(mod);
+                          break;
+                      }
                     });
                     // TODO: tell the user to tweak permissions if it fails
                   }

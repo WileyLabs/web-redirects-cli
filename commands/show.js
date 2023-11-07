@@ -5,7 +5,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { Level } from 'level';
@@ -15,9 +14,10 @@ import {
   convertPageRulesToRedirects,
   outputPageRulesAsText
 } from '../lib/shared.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
+import {
+  getZoneById,
+  getPageRulesByZoneId
+} from '../lib/cloudflare.js';
 
 /**
  * Show a specific domain name's Zone/Site info from Cloudflare + current Page
@@ -45,7 +45,6 @@ const builder = (yargs) => {
     });
 };
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
   if (!('domain' in argv)) {
     error('Which domain where you wanting to show redirects for?');
   } else {
@@ -55,11 +54,11 @@ const handler = (argv) => {
     db.get(argv.domain)
       .then((zone_id) => {
         Promise.all([
-          axios.get(`/zones/${zone_id}`),
-          axios.get(`/zones/${zone_id}/pagerules`)
+          getZoneById(zone_id),
+          getPageRulesByZoneId(zone_id)
         ])
           .then((results) => {
-            const [zone, pagerules] = results.map((resp) => resp.data.result);
+            const [zone, pagerules] = results;
             let output = {};
 
             switch (argv.format) {
@@ -86,9 +85,11 @@ const handler = (argv) => {
                 if (!argv.export) {
                   console.dir(output, { depth: 5 });
                 } else {
-                  const redir_filepath = path.join(process.cwd(),
+                  const redir_filepath = path.join(
+                    process.cwd(),
                     argv.configDir.name,
-                    `${zone.name}.${argv.format}`);
+                    `${zone.name}.${argv.format}`
+                  );
                   const formatForOutput = argv.format === 'json'
                     ? (o) => JSON.stringify(o, null, 2)
                     : YAML.dump;

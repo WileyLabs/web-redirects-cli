@@ -5,7 +5,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { Level } from 'level';
@@ -18,31 +17,32 @@ import {
   createTheseDNSRecords,
   buildRequiredDNSRecordsForPagerules,
   error,
-  gatherZones,
   outputPageRulesAsText,
   warn
 } from '../lib/shared.js';
-
-// foundational HTTP setup to Cloudflare's API
-axios.defaults.baseURL = 'https://api.cloudflare.com/client/v4';
+import {
+  getAccountById,
+  getZonesByAccount,
+  updateZoneSettingsById,
+  createWorkerRoute,
+  createZone,
+  postZonePageRulesById,
+  putWorkerKVValuesByDomain
+} from '../lib/cloudflare.js';
 
 // load the `.settings.yaml` file for secuirty defaults
 function setSecuritySettings(argv, zone_id) {
   console.log(chalk.gray('  Setting security settings...'));
-  const settings_path = path.join(process.cwd(), argv.configDir.name,
-    '.settings.yaml');
+  const settings_path = path.join(
+    process.cwd(),
+    argv.configDir.name,
+    '.settings.yaml'
+  );
   try {
     const settings = YAML.load(fs.readFileSync(settings_path));
-    axios.patch(`/zones/${zone_id}/settings`,
-      { items: convertToIdValueObjectArray(settings) })
+    updateZoneSettingsById(zone_id, { items: convertToIdValueObjectArray(settings) })
       .catch((err) => {
-        if ('response' in err
-            && 'status' in err.response
-            && err.response.status === 403) {
-          error(`The API token needs the ${chalk.bold('#zone_settings.edit')} permissions enabled.`);
-        } else {
-          console.error(err);
-        }
+        console.error(`Caught error: ${err}`);
       });
   } catch (e) {
     console.error(e);
@@ -55,9 +55,11 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
   const filename = domains_to_add.shift();
   const domain = path.parse(filename).name;
 
-  const redir_filepath = path.join(process.cwd(),
+  const redir_filepath = path.join(
+    process.cwd(),
     argv.configDir.name,
-    filename);
+    filename
+  );
 
   let description = '';
   try {
@@ -77,17 +79,14 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
     }).then((answers) => {
       if (answers.confirmCreate) {
         console.log(chalk.gray('  Creating the zone...'));
-        axios.post('/zones', {
-          name: domain,
-          account: { id: account_id }
-        })
+        createZone(domain, account_id)
           .then((resp) => {
             if (resp.data.success) {
               const zone = resp.data.result;
               const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
 
               // update domain to zone.id map in local database
-              const db = Level(`${process.cwd()}/.cache-db`);
+              const db = new Level(`${process.cwd()}/.cache-db`);
               db.put(domain, zone.id)
                 .catch(console.error);
               db.close();
@@ -101,11 +100,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               if (description.redirects.length > 3) {
                 // There are too many redirects for the Free Website plan,
                 // so let's setup a Worker Route...
-                axios
-                  .post(`/zones/${zone.id}/workers/routes`, {
-                    pattern: `*${domain}/*`,
-                    script: 'redir' // TODO: make this configurable!!
-                  })
+                createWorkerRoute(zone.id, domain, 'redir') // TODO: make 'redir' script name configurable!!
                   .then(({ data }) => {
                     if (data.success) {
                       console.log('  Worker Route configured successfully!');
@@ -114,7 +109,12 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   .catch(console.error);
                 // ...and put the redirect description in the Worker KV storage.
                 // TODO: check (earlier than here!) whether WR_WORKER_KV_NAMESPACE is set
-                axios.put(`/accounts/${argv.accountId}/storage/kv/namespaces/${argv.workerKvNamespace}/values/${domain}`, description)
+                putWorkerKVValuesByDomain(
+                  argv.accountId,
+                  argv.workerKvNamespace,
+                  domain,
+                  description
+                )
                   .then(({ data }) => {
                     if (data.success) {
                       console.log('  Redirect Description stored in Key Value storage successfully!');
@@ -128,12 +128,7 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                   console.log();
                   console.log(chalk.gray('  Adding these Page Rules...'));
                   outputPageRulesAsText([pagerule]);
-
-                  axios.post(`/zones/${zone.id}/pagerules`, {
-                    status: 'active',
-                    // splat in `targets` and `actions`
-                    ...pagerule
-                  })
+                  postZonePageRulesById(zone.id, pagerule)
                     .then(({ data }) => {
                       if (data.success) {
                         console.log('  Page rule successfully created!');
@@ -179,8 +174,8 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
                 && err.response.status === 403) {
               error(`The API token needs the ${chalk.bold('#zone.edit')} permissions enabled.`);
             } else {
-              console.error(`${err.response.status} ${err.response.statusText}`);
-              console.error(err.response.data);
+              // console.error(`${err.response.status} ${err.response.statusText}`);
+              console.error(err);
             }
           });
       } else {
@@ -198,8 +193,7 @@ const command = ['domains', 'zones'];
 const describe = 'List domains in the current Cloudflare account';
 // exports.builder = (yargs) => {};
 const handler = (argv) => {
-  axios.defaults.headers.common.Authorization = `Bearer ${argv.cloudflareToken}`;
-  gatherZones(argv.accountId)
+  getZonesByAccount(argv.accountId)
     .then((all_zones) => {
       // setup a local level store for key/values (mostly)
       const db = new Level(`${process.cwd()}/.cache-db`);
@@ -272,18 +266,16 @@ const handler = (argv) => {
           if (answers.confirmCreateIntent) {
             // first, confirm which Cloudflare account (there should only be one)
             // ...so for now we just grab the first one...
-            axios.get(`/accounts/${argv.accountId}`)
+            getAccountById(argv.accountId)
               .then((account_resp) => {
-                if (account_resp.data.success) {
-                  const account_id = account_resp.data.result.id;
-                  const account_name = account_resp.data.result.name;
-                  // TODO: get confirmation on the account found?
-                  console.log(`We'll be adding these to ${account_name}.`);
+                const account_id = account_resp.id;
+                const account_name = account_resp.name;
+                // TODO: get confirmation on the account found?
+                console.log(`We'll be adding these to ${account_name}.`);
 
-                  // recursive function that will add each in sequence (based
-                  // on positive responses of course)
-                  confirmDomainAdditions(described_but_no_zone, account_name, account_id, argv);
-                }
+                // recursive function that will add each in sequence (based
+                // on positive responses of course)
+                confirmDomainAdditions(described_but_no_zone, account_name, account_id, argv);
               })
               .catch((err) => {
                 console.log(err);
