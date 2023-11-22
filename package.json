@@ -38,7 +38,7 @@
     "open": "^9.1.0",
     "parse-domain": "^8.0.1",
     "table": "^6.8.1",
-    "uuid": "^9.0.0",
+    "uuid": "^9.0.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
