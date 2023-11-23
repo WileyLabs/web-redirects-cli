@@ -148,12 +148,15 @@ as described here.
 
 ### Wrangler Installation
 
-Wrangler v2 should be installed for the deployment of the `web-redirects-cli` worker. 
+As Wrangler is included as a dependency for this package - you can use `npx` to run the 
+Wrangler commands needed to deploy the `web-redirects-cli` worker.
 
-Find instructions here: https://developers.cloudflare.com/workers/wrangler/install-and-update/
+(If you want to install Wrangler globally, you can find instructions here: 
+https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 
 ```
-> wrangler -v
+> npm i
+> npx wrangler -v
 ```
 
 ### Wrangler Configuration (wrangler.toml)
@@ -169,7 +172,7 @@ Find more details here: https://developers.cloudflare.com/workers/wrangler/confi
 To deploy the worker to production or non-production you will need to login via `wrangler`
 
 ```
-> wrangler login 
+> npx wrangler login 
 ...
 ```
 
@@ -177,14 +180,14 @@ This will redirect you to your default browser - to login to Cloudflare and gran
 Once logged in you can check your current access using the `whoami` sub-command.
 
 ```
-> wrangler whoami
+> npx wrangler whoami
 ...
 ```
 
 If required, you can log out after completing a deployment.
 
 ```
-> wrangler logout
+> npx wrangler logout
 ```
 
 By default Wrangler will publish Worker script changes using a non-production service name
@@ -193,12 +196,12 @@ must be specified:
 
 Default (non-prod)
 ```
-> wrangler deploy
+> npx wrangler deploy
 ```
 
 Deploy to Production
 ```
-> wrangler deploy --env production
+> npx wrangler deploy --env production
 ```
 
 ## License
