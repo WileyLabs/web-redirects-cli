@@ -18,6 +18,7 @@ import * as compare from './commands/compare.js';
 import * as domains from './commands/domains.js';
 import * as show from './commands/show.js';
 import * as worker from './commands/worker.js';
+import * as sync from './commands/sync.js';
 
 // load environment variables from `.env` file (if any)
 import 'dotenv/config';
@@ -67,6 +68,8 @@ yargs(hideBin(process.argv))
   .command(dash)
   // // Setup Worker and KV stuff for large redirects
   .command(worker)
+  // WIP Synchronize zones with YAML
+  .command(sync)
   .demandCommand(1, '')
   .alias('h', 'help')
   .alias('v', 'version')
