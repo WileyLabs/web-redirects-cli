@@ -9,6 +9,7 @@ import {
   getLocalYamlZones
 } from '../lib/sync-shared.js';
 import {
+  getDnsRecordsByZoneId,
   getZonesByAccount,
   getZoneSettingsById
 } from '../lib/cloudflare.js';
@@ -67,24 +68,40 @@ const areZoneSettingsValid = async (zoneId) => {
   return valid;
 };
 
-const processZone = async (key, data) => {
+const isStandardDns = async (data) => {
+  // TODO should only have 2 DNS records
+  const dns = await getDnsRecordsByZoneId(data.cloudflare.id);
+  dns.forEach((item) => {
+    console.log(lightblue(`${item.name} [${item.type}] => ${item.content}`));
+  });
+  return true;
+};
 
+const processZone = async (key, data) => {
   // 1. is zone in yaml, cloudflare or both?
   if (data.yaml && data.cloudflare) {
+    // check zone settings
     const result = await areZoneSettingsValid(data.cloudflare.id);
+    // TODO check DNS
+    const result2 = await isStandardDns(data);
+    // TODO check redirects - page rules (?) and worker KV
+
+    // TODO check worker routes/custom domains
+
     if (result) {
       console.log(green(`${key}`));
     } else {
       console.log(orange(`${key} [incorrect settings]`));
     }
   } else if (data.yaml) {
-    console.log(blue(`${key} [Not in Cloudflare yet!]`));
+    console.log(blue(`${key} [Not in Cloudflare!]`));
+    // TODO option to add zone to Cloudflare
   } else if (data.cloudflare) {
     console.log(purple(`${key} [No YAML defined!]`));
+    // TODO option to create YAML file?
   } else {
     console.log(red(`ERROR: ${key}`));
   }
-
 
   // compare data (pluggable modules - interface to be defined)
 
