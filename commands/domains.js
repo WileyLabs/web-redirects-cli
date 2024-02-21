@@ -71,10 +71,15 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
   }
 
   if (description !== '') {
+    // handle zone with no redirects
+    let redirects = [];
+    if (description.redirects && description.redirects.length > 0) {
+      redirects = description.redirects;
+    }
     inquirer.prompt({
       type: 'confirm',
       name: 'confirmCreate',
-      message: `Add ${domain} with ${description.redirects.length} redirects to ${account_name}?`,
+      message: `Add ${domain} with ${redirects.length} redirects to ${account_name}?`,
       default: false
     }).then((answers) => {
       if (answers.confirmCreate) {
@@ -83,7 +88,6 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
           .then((resp) => {
             if (resp.data.success) {
               const zone = resp.data.result;
-              const pagerules = description.redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
 
               // update domain to zone.id map in local database
               const db = new Level(`${process.cwd()}/.cache-db`);
@@ -96,8 +100,9 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
               // set the security settings to the defaults
               setSecuritySettings(argv, zone.id);
 
+              const pagerules = redirects.map((redir) => convertRedirectToPageRule(redir, `*${domain}`));
               // TODO: we need to wait until the security settings are complete before we continue
-              if (description.redirects.length > 3) {
+              if (redirects.length > 3) {
                 // There are too many redirects for the Free Website plan,
                 // so let's setup a Worker Route...
                 createWorkerRoute(zone.id, domain, 'redir') // TODO: make 'redir' script name configurable!!

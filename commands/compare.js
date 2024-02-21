@@ -74,6 +74,9 @@ const handler = (argv) => {
             } else {
               const redir_filepath = path.join(process.cwd(), argv.configDir.name, redir_filename);
               let future = YAML.load(fs.readFileSync(redir_filepath)).redirects;
+              if (!future) {
+                future = []; // handle zone with no redirects
+              }
               // add defalts into minimal YAMLs
               future = future.map((rule) => {
                 const rv = rule;
