@@ -36,7 +36,7 @@
     "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
     "open": "^10.0.3",
-    "parse-domain": "^8.0.1",
+    "parse-domain": "^8.0.2",
     "table": "^6.8.1",
     "uuid": "^9.0.1",
     "yargs": "^17.7.2"
