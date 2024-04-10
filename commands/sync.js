@@ -3,6 +3,7 @@
  * @license MIT
  */
 import lodash from 'lodash';
+import flatCache from 'flat-cache';
 import {
   green, blue, red, orange, purple, lightblue,
   getLocalYamlSettings,
@@ -14,7 +15,11 @@ import {
   getZoneSettingsById
 } from '../lib/cloudflare.js';
 
+const cacheDir = '.cache';
+const cacheId = 'zones';
+
 const command = 'sync';
+
 const describe = 'Check and optionally update domains in the current Cloudflare account';
 const builder = (yargs) => {
   yargs
@@ -43,65 +48,136 @@ const builder = (yargs) => {
 let localZoneSettings;
 
 const { isEqual } = lodash;
+flatCache.clearAll(cacheDir); // clear cache at start of run
+const zones = flatCache.load(cacheId, cacheDir);
 
-const insertValue = (map, key, value) => {
-  const currentData = map.get(key);
+// add value to cache map without wiping existing data
+const insertValue = (cache, key, value) => {
+  const currentData = cache.getKey(key);
   if (currentData) {
-    map.set(key, { ...currentData, ...value });
+    cache.setKey(key, { ...currentData, ...value });
   } else {
-    map.set(key, value);
+    cache.setKey(key, value);
   }
-  return null;
+  return cache.getKey(key);
 };
 
-const areZoneSettingsValid = async (zoneId) => {
-  const cfSettings = await getZoneSettingsById(zoneId);
-  let valid = true;
+const areZoneSettingsValid = async (zoneName) => {
+  const data = zones.getKey(zoneName);
+  const cfSettings = await getZoneSettingsById(data.cloudflare.id);
   Object.keys(localZoneSettings).forEach((setting) => {
     const localValue = localZoneSettings[setting];
     const remoteValue = cfSettings.filter((prop) => prop.id === setting);
     if (!isEqual(localValue, remoteValue[0].value)) {
-      valid = false;
-      console.log(`${setting} | ${JSON.stringify(localValue)} | ${JSON.stringify(remoteValue[0].value)}`);
+      data.match = false;
+      data.messages.push(`Settings mismatch (${setting})`);
     }
   });
-  return valid;
+  zones.setKey(zoneName, data);
+  return data;
 };
 
-const isStandardDns = async (data) => {
-  // TODO should only have 2 DNS records
+// generate valid DNS records for a zone
+const getValidDns = (zoneName) => [
+  {
+    name: zoneName,
+    type: 'A',
+    content: '192.0.2.0'
+  },
+  {
+    name: `www.${zoneName}`,
+    type: 'CNAME',
+    content: zoneName
+  }
+];
+
+const isStandardDns = async (zoneName) => {
+  const data = zones.getKey(zoneName);
   const dns = await getDnsRecordsByZoneId(data.cloudflare.id);
-  dns.forEach((item) => {
-    console.log(lightblue(`${item.name} [${item.type}] => ${item.content}`));
+  if (dns.length < 1) { // TODO need to check for parked zone
+    data.match = false;
+    data.messages.push('No DNS records');
+    zones.setKey(zoneName, data);
+    return data;
+  }
+  const rules = getValidDns(dns[0].zone_name); // every record has zone_name
+  const matchedRules = [];
+  const unmatchedRules = [];
+  dns.forEach((record) => {
+    const temp = {
+      name: record.name,
+      type: record.type,
+      content: record.content
+    };
+    let validRule = false;
+    rules.forEach((rule, index, array) => {
+      if (isEqual(rule, temp)) {
+        matchedRules.push(array.splice(array, 1)); // remove matching item
+        validRule = true;
+      }
+    });
+    if (!validRule) {
+      unmatchedRules.push(record);
+    }
   });
-  return true;
+  if (rules.length === 0 && unmatchedRules.length === 0) {
+    // matching DNS
+    return data;
+  }
+  if (rules.length > 0) {
+    data.match = false;
+    data.messages.push('Missing DNS records');
+    zones.setKey(zoneName, data);
+    return data;
+  }
+  if (unmatchedRules.length > 0) {
+    data.match = false;
+    data.messages.push('Extra DNS records');
+    zones.setKey(zoneName, data);
+    return data;
+  }
+  data.match = false;
+  data.messages.push('Undefined DNS mismatch');
+  zones.setKey(zoneName, data);
+  return data;
 };
 
-const processZone = async (key, data) => {
+const processZone = async (zoneName) => {
+  const data = zones.getKey(zoneName);
+  data.match = true; // status starts as true
+  data.messages = [];
+
   // 1. is zone in yaml, cloudflare or both?
   if (data.yaml && data.cloudflare) {
     // check zone settings
-    const result = await areZoneSettingsValid(data.cloudflare.id);
-    // TODO check DNS
-    const result2 = await isStandardDns(data);
+    await areZoneSettingsValid(zoneName);
+    // check DNS
+    await isStandardDns(zoneName);
     // TODO check redirects - page rules (?) and worker KV
 
     // TODO check worker routes/custom domains
 
-    if (result) {
-      console.log(green(`${key}`));
-    } else {
-      console.log(orange(`${key} [incorrect settings]`));
-    }
-  } else if (data.yaml) {
-    console.log(blue(`${key} [Not in Cloudflare!]`));
-    // TODO option to add zone to Cloudflare
-  } else if (data.cloudflare) {
-    console.log(purple(`${key} [No YAML defined!]`));
-    // TODO option to create YAML file?
-  } else {
-    console.log(red(`ERROR: ${key}`));
+    zones.setKey(zoneName, data);
+    return data;
   }
+  if (data.yaml) {
+    // TODO option to add zone to Cloudflare
+    data.match = false;
+    data.messages.push('Not in Cloudflare');
+    zones.setKey(zoneName, data);
+    return data;
+  }
+  if (data.cloudflare) {
+    // TODO option to create YAML file?
+    data.match = false;
+    data.messages.push('No YAML defined');
+    zones.setKey(zoneName, data);
+    return data;
+  }
+  data.match = false;
+  data.messages.push('Script error');
+  zones.setKey(zoneName, data);
+  return data;
 
   // compare data (pluggable modules - interface to be defined)
 
@@ -110,26 +186,35 @@ const processZone = async (key, data) => {
   // update cloudflare (pluggable modules - interface to be defined)
 
   // opt. persist remote config (pluggable modules - interface to be defined)
-
 };
 
 const handler = async (argv) => {
-  // console.debug('argv', argv);
+  // flatCache.clearAll(cacheDir); // clear cache at start of run
+  // const zones = flatCache.load(cacheId, cacheDir);
 
   // load local config to cache (fail on error - e.g. missing params)
   localZoneSettings = await getLocalYamlSettings(argv.configDir);
 
-  const zoneData = new Map();
-
   // fetch list of all zones defined in yaml configuration
   const yamlZones = await getLocalYamlZones(argv.configDir);
-  yamlZones.map((data) => insertValue(zoneData, data.zone, { yaml: data }));
+  yamlZones.map((data) => insertValue(zones, data.zone, { yaml: data }));
 
   // load remote config to cache (fail on error - e.g. missing params/credentials)
   const cfZones = await getZonesByAccount(argv.accountId);
-  cfZones.map((data) => insertValue(zoneData, data.name, { cloudflare: data }));
+  cfZones.map((data) => insertValue(zones, data.name, { cloudflare: data }));
 
-  Array.from(zoneData.keys()).forEach((zone) => processZone(zone, zoneData.get(zone)));
+  await Promise.all(zones.keys().map(async (zone) => {
+    await processZone(zone);
+  }));
+
+  zones.keys().forEach((zone) => {
+    const data = zones.getKey(zone);
+    if (data.match) {
+      console.log(`${green(zone)} [${green(data.messages.join('; '))}]`);
+    } else {
+      console.log(`${lightblue(zone)} [${orange(data.messages.join('; '))}]`);
+    }
+  });
 };
 
 export {

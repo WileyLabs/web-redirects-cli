@@ -30,6 +30,7 @@
     "cli-simple-table": "^1.1.1",
     "deep-object-diff": "^1.1.9",
     "dotenv": "^16.4.5",
+    "flat-cache": "^4.0.1",
     "inquirer": "^9.2.16",
     "js-yaml": "^4.1.0",
     "level": "^8.0.1",
