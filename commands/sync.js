@@ -70,7 +70,7 @@ const areZoneSettingsValid = async (zoneName) => {
     const remoteValue = cfSettings.filter((prop) => prop.id === setting);
     if (!isEqual(localValue, remoteValue[0].value)) {
       data.match = false;
-      data.messages.push(`Settings mismatch (${setting})`);
+      data.messages.push(`Settings: ${setting}`);
     }
   });
   zones.setKey(zoneName, data);
@@ -94,13 +94,16 @@ const getValidDns = (zoneName) => [
 const isStandardDns = async (zoneName) => {
   const data = zones.getKey(zoneName);
   const dns = await getDnsRecordsByZoneId(data.cloudflare.id);
-  if (dns.length < 1) { // TODO need to check for parked zone
+  const expectedRules = getValidDns(zoneName);
+  data.dns = {};
+  data.dns.expected = { ...expectedRules }; // create copy of object
+  data.dns.actual = [];
+  if (dns.length < 1) {
     data.match = false;
-    data.messages.push('No DNS records');
-    zones.setKey(zoneName, data);
+    data.messages.push('DNS: no records');
+    // zones.setKey(zoneName, data);
     return data;
   }
-  const rules = getValidDns(dns[0].zone_name); // every record has zone_name
   const matchedRules = [];
   const unmatchedRules = [];
   dns.forEach((record) => {
@@ -109,8 +112,9 @@ const isStandardDns = async (zoneName) => {
       type: record.type,
       content: record.content
     };
+    data.dns.actual.push(temp);
     let validRule = false;
-    rules.forEach((rule, index, array) => {
+    expectedRules.forEach((rule, index, array) => {
       if (isEqual(rule, temp)) {
         matchedRules.push(array.splice(array, 1)); // remove matching item
         validRule = true;
@@ -120,25 +124,20 @@ const isStandardDns = async (zoneName) => {
       unmatchedRules.push(record);
     }
   });
-  if (rules.length === 0 && unmatchedRules.length === 0) {
+  if (expectedRules.length === 0 && unmatchedRules.length === 0) {
     // matching DNS
+    // zones.setKey(zoneName, data);
     return data;
   }
-  if (rules.length > 0) {
+  if (expectedRules.length > 0) {
     data.match = false;
-    data.messages.push('Missing DNS records');
-    zones.setKey(zoneName, data);
-    return data;
+    data.messages.push('DNS: Missing records');
   }
   if (unmatchedRules.length > 0) {
     data.match = false;
-    data.messages.push('Extra DNS records');
-    zones.setKey(zoneName, data);
-    return data;
+    data.messages.push('DNS: Additional records');
   }
-  data.match = false;
-  data.messages.push('Undefined DNS mismatch');
-  zones.setKey(zoneName, data);
+  // zones.setKey(zoneName, data);
   return data;
 };
 
@@ -192,6 +191,8 @@ const handler = async (argv) => {
   // flatCache.clearAll(cacheDir); // clear cache at start of run
   // const zones = flatCache.load(cacheId, cacheDir);
 
+  console.log(blue('Fetching local configuration...'));
+
   // load local config to cache (fail on error - e.g. missing params)
   localZoneSettings = await getLocalYamlSettings(argv.configDir);
 
@@ -199,9 +200,13 @@ const handler = async (argv) => {
   const yamlZones = await getLocalYamlZones(argv.configDir);
   yamlZones.map((data) => insertValue(zones, data.zone, { yaml: data }));
 
+  console.log(blue('Fetching remote configuration...'));
+
   // load remote config to cache (fail on error - e.g. missing params/credentials)
   const cfZones = await getZonesByAccount(argv.accountId);
   cfZones.map((data) => insertValue(zones, data.name, { cloudflare: data }));
+
+  console.log(blue('Processing zones...'));
 
   await Promise.all(zones.keys().map(async (zone) => {
     await processZone(zone);
@@ -213,6 +218,11 @@ const handler = async (argv) => {
       console.log(`${green(zone)} [${green(data.messages.join('; '))}]`);
     } else {
       console.log(`${lightblue(zone)} [${orange(data.messages.join('; '))}]`);
+      // DEBUG
+      if (data.dns) {
+        console.log(green(data.dns.expected ? JSON.stringify(data.dns.expected) : ''));
+        console.log(blue(data.dns.actual ? JSON.stringify(data.dns.actual) : ''));
+      }
     }
   });
 };
