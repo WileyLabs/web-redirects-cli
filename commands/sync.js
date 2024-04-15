@@ -2,6 +2,9 @@
  * @copyright 2023 John Wiley & Sons, Inc.
  * @license MIT
  */
+import fs from 'fs';
+import dateformat from 'dateformat';
+import stripAnsi from 'strip-ansi';
 import lodash from 'lodash';
 import flatCache from 'flat-cache';
 import {
@@ -12,7 +15,8 @@ import {
 import {
   getDnsRecordsByZoneId,
   getZonesByAccount,
-  getZoneSettingsById
+  getZoneSettingsById,
+  listWorkerDomains
 } from '../lib/cloudflare.js';
 
 const cacheDir = '.cache';
@@ -51,6 +55,18 @@ const { isEqual } = lodash;
 flatCache.clearAll(cacheDir); // clear cache at start of run
 const zones = flatCache.load(cacheId, cacheDir);
 
+let logStream;
+const logger = (line, logToConsole = false) => {
+  if (!logStream) {
+    const filename = `sync-${dateformat(new Date(), 'yyyymmdd-HHMMssL')}.log`;
+    logStream = fs.createWriteStream(filename, {});
+  }
+  logStream.write(`${stripAnsi(line)}\r\n`);
+  if (logToConsole) {
+    console.log(line);
+  }
+};
+
 // add value to cache map without wiping existing data
 const insertValue = (cache, key, value) => {
   const currentData = cache.getKey(key);
@@ -58,6 +74,24 @@ const insertValue = (cache, key, value) => {
     cache.setKey(key, { ...currentData, ...value });
   } else {
     cache.setKey(key, value);
+  }
+  return cache.getKey(key);
+};
+
+// variation on insertValue() that adds values to an array
+const insertValues = (cache, key, childKey, value) => {
+  const currentData = cache.getKey(key);
+  if (currentData) {
+    if (currentData[childKey]) {
+      currentData[childKey] = currentData[childKey].concat(value);
+    } else {
+      currentData[childKey] = [value];
+    }
+    cache.setKey(key, currentData);
+  } else {
+    const newData = {};
+    newData[childKey] = [value];
+    cache.setKey(key, newData);
   }
   return cache.getKey(key);
 };
@@ -156,26 +190,28 @@ const processZone = async (zoneName) => {
 
     // TODO check worker routes/custom domains
 
-    zones.setKey(zoneName, data);
     return data;
   }
   if (data.yaml) {
     // TODO option to add zone to Cloudflare
     data.match = false;
     data.messages.push('Not in Cloudflare');
-    zones.setKey(zoneName, data);
     return data;
   }
   if (data.cloudflare) {
     // TODO option to create YAML file?
     data.match = false;
     data.messages.push('No YAML defined');
-    zones.setKey(zoneName, data);
+    return data;
+  }
+  if (data.cloudflare_worker) {
+    // only worker config
+    data.match = false;
+    data.messages.push('Cloudflare worker domain defined but no zone');
     return data;
   }
   data.match = false;
   data.messages.push('Script error');
-  zones.setKey(zoneName, data);
   return data;
 
   // compare data (pluggable modules - interface to be defined)
@@ -191,7 +227,8 @@ const handler = async (argv) => {
   // flatCache.clearAll(cacheDir); // clear cache at start of run
   // const zones = flatCache.load(cacheId, cacheDir);
 
-  console.log(blue('Fetching local configuration...'));
+  logger(`Starting sync at '${dateformat(new Date(), "yyyy-mm-dd HH:MM:ss Z")}'`);
+  logger(blue('Fetching local yaml...'), true);
 
   // load local config to cache (fail on error - e.g. missing params)
   localZoneSettings = await getLocalYamlSettings(argv.configDir);
@@ -200,13 +237,22 @@ const handler = async (argv) => {
   const yamlZones = await getLocalYamlZones(argv.configDir);
   yamlZones.map((data) => insertValue(zones, data.zone, { yaml: data }));
 
-  console.log(blue('Fetching remote configuration...'));
+  logger(blue('Fetching remote zones...'), true);
 
   // load remote config to cache (fail on error - e.g. missing params/credentials)
   const cfZones = await getZonesByAccount(argv.accountId);
   cfZones.map((data) => insertValue(zones, data.name, { cloudflare: data }));
 
-  console.log(blue('Processing zones...'));
+  logger(blue('Fetching remote worker domains...'), true);
+
+  // load remote config to cache (fail on error - e.g. missing params/credentials)
+  const cfWorkerDomains = await listWorkerDomains(argv.accountId);
+  cfWorkerDomains.map((data) => insertValues(zones, data.zone_name, 'cloudflare_worker', {
+    hostname: data.hostname,
+    service: data.service
+  }));
+
+  logger(blue('Processing zones...'), true);
 
   await Promise.all(zones.keys().map(async (zone) => {
     await processZone(zone);
@@ -215,13 +261,16 @@ const handler = async (argv) => {
   zones.keys().forEach((zone) => {
     const data = zones.getKey(zone);
     if (data.match) {
-      console.log(`${green(zone)} [${green(data.messages.join('; '))}]`);
+      logger(`${green(zone)} [${green(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
     } else {
-      console.log(`${lightblue(zone)} [${orange(data.messages.join('; '))}]`);
+      logger(`${lightblue(zone)} [${orange(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
       // DEBUG
+      if (data.cloudflare_worker) {
+        logger(JSON.stringify(data.cloudflare_worker));
+      }
       if (data.dns) {
-        console.log(green(data.dns.expected ? JSON.stringify(data.dns.expected) : ''));
-        console.log(blue(data.dns.actual ? JSON.stringify(data.dns.actual) : ''));
+        logger(`EXPECTED DNS: ${data.dns.expected ? JSON.stringify(data.dns.expected) : ''}`);
+        logger(`ACTUAL DNS: ${data.dns.actual ? JSON.stringify(data.dns.actual) : ''}`);
       }
     }
   });
