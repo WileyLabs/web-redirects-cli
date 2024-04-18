@@ -14,6 +14,7 @@ import {
 } from '../lib/sync-shared.js';
 import {
   getDnsRecordsByZoneId,
+  getPageRulesByZoneId,
   getZonesByAccount,
   getZoneSettingsById,
   listWorkerDomains
@@ -175,6 +176,35 @@ const isStandardDns = async (zoneName) => {
   return data;
 };
 
+const hasConfiguredRedirects = async (zoneName) => {
+  const data = zones.getKey(zoneName);
+
+  // retrieve yaml redirects
+  if (data.yaml.description.redirects && data.yaml.description.redirects.length > 0) {
+    data.yaml_redirects = data.yaml.description.redirects;
+  } else {
+    data.match = false;
+    data.messages.push('Redirects: None defined');
+  }
+
+  // page rules or worker KV?
+
+  // retrieve page rules
+  if (data.cloudflare.id) {
+    const pageRules = await getPageRulesByZoneId(data.cloudflare.id);
+    data.cf_page_rules = pageRules;
+  } else {
+    data.match = false;
+    data.messages.push('Redirects: No Cloudflare zone');
+  }
+
+  // retrieve worker KV
+
+  // compare and log
+
+  return data;
+};
+
 const processZone = async (zoneName) => {
   const data = zones.getKey(zoneName);
   data.match = true; // status starts as true
@@ -187,6 +217,7 @@ const processZone = async (zoneName) => {
     // check DNS
     await isStandardDns(zoneName);
     // TODO check redirects - page rules (?) and worker KV
+    await hasConfiguredRedirects(zoneName);
 
     // TODO check worker routes/custom domains
 
@@ -264,13 +295,19 @@ const handler = async (argv) => {
       logger(`${green(zone)} [${green(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
     } else {
       logger(`${lightblue(zone)} [${orange(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
-      // DEBUG
+      // debug output to log file
       if (data.cloudflare_worker) {
-        logger(JSON.stringify(data.cloudflare_worker));
+        logger(`CLOUDFLARE_WORKER: ${JSON.stringify(data.cloudflare_worker)}`);
       }
       if (data.dns) {
-        logger(`EXPECTED DNS: ${data.dns.expected ? JSON.stringify(data.dns.expected) : ''}`);
-        logger(`ACTUAL DNS: ${data.dns.actual ? JSON.stringify(data.dns.actual) : ''}`);
+        logger(`DNS_CONFIGURED: ${data.dns.expected ? JSON.stringify(data.dns.expected) : ''}`);
+        logger(`DNS_CLOUDFLARE: ${data.dns.actual ? JSON.stringify(data.dns.actual) : ''}`);
+      }
+      if (data.yaml_redirects) {
+        logger(`REDIRECTS_CONFIGURED: ${JSON.stringify(data.yaml_redirects)}`);
+      }
+      if (data.cf_page_rules) {
+        logger(`REDIRECTS_PAGERULES: ${JSON.stringify(data.cf_page_rules)}`);
       }
     }
   });
