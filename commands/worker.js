@@ -33,7 +33,7 @@ const handler = (argv) => {
     })
     .catch(console.error);
   // get the zone ID for the domain in question
-  getZonesByName(domain)
+  getZonesByName(domain, argv.accountId)
     .then((results) => {
       switch (results.length) {
         case 0:
