@@ -25,7 +25,7 @@ const cacheId = 'zones';
 
 const command = 'sync';
 
-const describe = 'Check and optionally update domains in the current Cloudflare account';
+const describe = '** Experimental ** Check domains in the current Cloudflare account and list any differences with the local configuration. Work-in-progress.';
 const builder = (yargs) => {
   yargs
     .options({
