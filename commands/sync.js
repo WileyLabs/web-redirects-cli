@@ -8,7 +8,7 @@ import stripAnsi from 'strip-ansi';
 import lodash from 'lodash';
 import flatCache from 'flat-cache';
 import {
-  green, blue, red, orange, purple, lightblue,
+  green, blue, orange, purple, lightblue,
   getLocalYamlSettings,
   getLocalYamlZones
 } from '../lib/sync-shared.js';
