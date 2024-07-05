@@ -11,14 +11,15 @@ import { Level } from 'level';
 import * as YAML from 'js-yaml';
 import flatCache from 'flat-cache';
 import {
-  purple,
-  lightblue,
+  buildRequiredDNSRecordsForPagerules,
   convertRedirectToPageRule,
   convertToIdValueObjectArray,
   createTheseDNSRecords,
-  buildRequiredDNSRecordsForPagerules,
   error,
+  getDefaultDnsRecords,
+  lightblue,
   outputPageRulesAsText,
+  purple,
   warn
 } from '../lib/shared.js';
 import {
@@ -26,7 +27,11 @@ import {
   getLocalYamlZones
 } from '../lib/sync-shared.js';
 import {
+  deleteDnsRecord,
+  deleteWorkerRouteById,
   getAccountById,
+  getDnsRecordsByZoneId,
+  getWorkerRoutesByZoneId,
   getZonesByAccount,
   updateZoneSettingsById,
   createWorkerRoute,
@@ -72,11 +77,6 @@ const outputCloudflareZoneDetails = (zones, configDir) => {
   });
 };
 
-// const setSecuritySettings = async (zone_id) => {
-//   console.log(chalk.gray('  Setting security settings...'));
-//   return updateZoneSettingsById(zone_id, { items: convertToIdValueObjectArray(localZoneSettings) });
-// };
-
 const addZoneToAccount = async (data, account, argv) => {
   // debug
   // console.log(data);
@@ -89,7 +89,7 @@ const addZoneToAccount = async (data, account, argv) => {
   const { zone, yamlPath, description } = data.yaml;
 
   if (!description || description === '') {
-    console.log(`No YAML data found for ${zone} [${path.relative(process.cwd(), yamlPath)}], skipping!`);
+    console.log(lightblue(`No YAML data found for ${zone} [${path.relative(process.cwd(), yamlPath)}], skipping!`));
     return;
   }
 
@@ -111,11 +111,11 @@ const addZoneToAccount = async (data, account, argv) => {
   }
 
   console.log('Creating the zone...');
-  // try {
   const response = await createZone(zone, account.id);
   if (response.data.success) {
     const { id, name, status } = response.data.result;
     console.log(`  ${chalk.bold(name)}${chalk.gray(' has been created and is ')}${lightblue(status)}`);
+
     // update zone settings
     const settingsResponse = await updateZoneSettingsById(id, {
       items: convertToIdValueObjectArray(localZoneSettings)
@@ -123,7 +123,29 @@ const addZoneToAccount = async (data, account, argv) => {
     if (settingsResponse.data.success) {
       console.log(chalk.gray('  Updated security settings.'));
     }
-    // create worker route
+
+    // check for any worker routes that may exist if
+    // the zone was previously deleted and re-added
+    const existingWorkerRoutes = await getWorkerRoutesByZoneId(id);
+    if (existingWorkerRoutes.length > 0) {
+      const deleteResources = await inquirer.prompt({
+        type: 'confirm',
+        name: 'confirmDelete',
+        message: chalk.yellow(`${zone} has existing worker routes! Delete these before continuing?`),
+        default: false
+      });
+      if (!deleteResources.confirmDelete) {
+        console.log(lightblue('Exiting zone creation before complete! Check zone manually.'));
+        return;
+      }
+      const promises = existingWorkerRoutes.map((route) => deleteWorkerRouteById(id, route.id));
+      await Promise.allSettled(promises);
+    }
+
+    /* create worker route
+     * NOTE: sticking with worker routes over custom domains for now, to give
+     * option of flexibility for domains with 'passthrough' option.
+     */
     const workerName = argv.workerName ? argv.workerName : 'redir';
     const workerResponse = await createWorkerRoute(id, name, workerName);
     if (workerResponse.data.success) {
@@ -139,10 +161,27 @@ const addZoneToAccount = async (data, account, argv) => {
     if (kvResponse.data.success) {
       console.log(chalk.gray('  Redirect Description stored in Key Value storage successfully.'));
     }
+
+    // check for any dns records that may exist if
+    // the zone was previously deleted and re-added
+    const existingDns = await getDnsRecordsByZoneId(id);
+    if (existingDns.length > 0) {
+      const deleteResources = await inquirer.prompt({
+        type: 'confirm',
+        name: 'confirmDelete',
+        message: chalk.yellow(`${zone} has existing DNS records! Delete these before continuing?`),
+        default: false
+      });
+      if (!deleteResources.confirmDelete) {
+        console.log(lightblue('Exiting zone creation before complete! Check zone manually.'));
+        return;
+      }
+      const promises = existingDns.map((record) => deleteDnsRecord(id, record.id));
+      await Promise.allSettled(promises);
+    }
+
+    createTheseDNSRecords(id, getDefaultDnsRecords(zone)); // TODO refactor to await completion
   }
-  // } catch (err) {
-  //   console.error(err);
-  // }
 };
 
 // ------------------------------------------------------------
