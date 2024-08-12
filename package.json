@@ -38,7 +38,7 @@
     "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
     "open": "^10.1.0",
-    "parse-domain": "^8.2.1",
+    "parse-domain": "^8.2.2",
     "strip-ansi": "^7.1.0",
     "table": "^6.8.2",
     "uuid": "^10.0.0",
