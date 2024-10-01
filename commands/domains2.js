@@ -96,7 +96,8 @@ const addZoneToAccount = async (data, account, argv) => {
     default: false
   });
   if (!answer.confirmCreate) {
-    console.info(lightblue('Skipping!'));
+    // Do nothing
+    // console.info(lightblue('Skipping!'));
     return;
   }
 
