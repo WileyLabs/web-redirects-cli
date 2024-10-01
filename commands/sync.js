@@ -6,7 +6,6 @@ import fs from 'fs';
 import dateformat from 'dateformat';
 import stripAnsi from 'strip-ansi';
 import lodash from 'lodash';
-import flatCache from 'flat-cache';
 import {
   green, blue, orange, purple, lightblue,
   getLocalYamlSettings,
@@ -19,9 +18,6 @@ import {
   getZoneSettingsById,
   listWorkerDomains
 } from '../lib/cloudflare.js';
-
-const cacheDir = '.cache';
-const cacheId = 'zones';
 
 const command = 'sync';
 
@@ -53,8 +49,8 @@ const builder = (yargs) => {
 let localZoneSettings;
 
 const { isEqual } = lodash;
-flatCache.clearAll(cacheDir); // clear cache at start of run
-const zones = flatCache.load(cacheId, cacheDir);
+
+const zones = new Map();
 
 let logStream;
 const logger = (line, logToConsole = false) => {
@@ -70,35 +66,35 @@ const logger = (line, logToConsole = false) => {
 
 // add value to cache map without wiping existing data
 const insertValue = (cache, key, value) => {
-  const currentData = cache.getKey(key);
+  const currentData = cache.get(key);
   if (currentData) {
-    cache.setKey(key, { ...currentData, ...value });
+    cache.set(key, { ...currentData, ...value });
   } else {
-    cache.setKey(key, value);
+    cache.set(key, value);
   }
-  return cache.getKey(key);
+  return cache.get(key);
 };
 
 // variation on insertValue() that adds values to an array
 const insertValues = (cache, key, childKey, value) => {
-  const currentData = cache.getKey(key);
+  const currentData = cache.get(key);
   if (currentData) {
     if (currentData[childKey]) {
       currentData[childKey] = currentData[childKey].concat(value);
     } else {
       currentData[childKey] = [value];
     }
-    cache.setKey(key, currentData);
+    cache.set(key, currentData);
   } else {
     const newData = {};
     newData[childKey] = [value];
-    cache.setKey(key, newData);
+    cache.set(key, newData);
   }
-  return cache.getKey(key);
+  return cache.get(key);
 };
 
 const areZoneSettingsValid = async (zoneName) => {
-  const data = zones.getKey(zoneName);
+  const data = zones.get(zoneName);
   const cfSettings = await getZoneSettingsById(data.cloudflare.id);
   Object.keys(localZoneSettings).forEach((setting) => {
     const localValue = localZoneSettings[setting];
@@ -108,7 +104,7 @@ const areZoneSettingsValid = async (zoneName) => {
       data.messages.push(`Settings: ${setting}`);
     }
   });
-  zones.setKey(zoneName, data);
+  zones.set(zoneName, data);
   return data;
 };
 
@@ -127,7 +123,7 @@ const getValidDns = (zoneName) => [
 ];
 
 const isStandardDns = async (zoneName) => {
-  const data = zones.getKey(zoneName);
+  const data = zones.get(zoneName);
   const dns = await getDnsRecordsByZoneId(data.cloudflare.id);
   const expectedRules = getValidDns(zoneName);
   data.dns = {};
@@ -136,7 +132,7 @@ const isStandardDns = async (zoneName) => {
   if (dns.length < 1) {
     data.match = false;
     data.messages.push('DNS: no records');
-    // zones.setKey(zoneName, data);
+    // zones.set(zoneName, data);
     return data;
   }
   const matchedRules = [];
@@ -161,7 +157,6 @@ const isStandardDns = async (zoneName) => {
   });
   if (expectedRules.length === 0 && unmatchedRules.length === 0) {
     // matching DNS
-    // zones.setKey(zoneName, data);
     return data;
   }
   if (expectedRules.length > 0) {
@@ -172,12 +167,11 @@ const isStandardDns = async (zoneName) => {
     data.match = false;
     data.messages.push('DNS: Additional records');
   }
-  // zones.setKey(zoneName, data);
   return data;
 };
 
 const hasConfiguredRedirects = async (zoneName) => {
-  const data = zones.getKey(zoneName);
+  const data = zones.get(zoneName);
 
   // retrieve yaml redirects
   if (data.yaml.description.redirects && data.yaml.description.redirects.length > 0) {
@@ -206,7 +200,7 @@ const hasConfiguredRedirects = async (zoneName) => {
 };
 
 const processZone = async (zoneName) => {
-  const data = zones.getKey(zoneName);
+  const data = zones.get(zoneName);
   data.match = true; // status starts as true
   data.messages = [];
 
@@ -285,16 +279,16 @@ const handler = async (argv) => {
 
   logger(blue('Processing zones...'), true);
 
-  await Promise.all(zones.keys().map(async (zone) => {
-    await processZone(zone);
-  }));
+  zones.forEach(async (value, key) => {
+    await processZone(key);
+  });
 
-  zones.keys().forEach((zone) => {
-    const data = zones.getKey(zone);
+  zones.forEach((value, key) => {
+    const data = zones.get(key);
     if (data.match) {
-      logger(`${green(zone)} [${green(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
+      logger(`${green(key)} [${green(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
     } else {
-      logger(`${lightblue(zone)} [${orange(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
+      logger(`${lightblue(key)} [${orange(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
       // debug output to log file
       if (data.cloudflare_worker) {
         logger(`CLOUDFLARE_WORKER: ${JSON.stringify(data.cloudflare_worker)}`);
