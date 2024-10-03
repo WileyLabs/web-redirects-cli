@@ -2,7 +2,7 @@
  * @copyright 2020 John Wiley & Sons, Inc.
  * @license MIT
  */
-
+/* eslint no-console: "off" */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
@@ -64,10 +64,17 @@ function confirmDomainAdditions(domains_to_add, account_name, account_id, argv) 
   let description = '';
   try {
     description = YAML.load(fs.readFileSync((redir_filepath)));
+    if (!description) {
+      throw new Error(`ERROR reading/parsing yaml file: ${redir_filepath}`);
+    }
+    if (!description.name || description.name !== domain) {
+      throw new Error(`ERROR domain mismatch in yaml file: ${redir_filepath}`);
+    }
   } catch (err) {
-    console.error(chalk.red(`${err.name}: ${err.reason}`));
-    console.log(`Skipping ${domain} for now.`);
+    console.error(chalk.red(err.message));
+    console.log(chalk.gray(`Skipping ${domain} for now.`));
     confirmDomainAdditions(domains_to_add, account_name, account_id, argv);
+    return;
   }
 
   if (description !== '') {
