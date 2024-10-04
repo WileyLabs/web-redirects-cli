@@ -2,6 +2,8 @@
  * @copyright 2023 John Wiley & Sons, Inc.
  * @license MIT
  */
+
+/* eslint no-console: "off" */
 import fs from 'fs';
 import dateformat from 'dateformat';
 import stripAnsi from 'strip-ansi';
