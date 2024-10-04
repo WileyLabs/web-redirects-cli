@@ -20,6 +20,7 @@ import * as domains2 from './commands/domains2.js';
 import * as show from './commands/show.js';
 import * as worker from './commands/worker.js';
 import * as sync from './commands/sync.js';
+import * as migrate from './commands/page-rule-migration.js';
 
 // load environment variables from `.env` file (if any)
 import 'dotenv/config';
@@ -72,6 +73,7 @@ yargs(hideBin(process.argv))
   .command(worker)
   // WIP Synchronize zones with YAML
   .command(sync)
+  .command(migrate)
   .demandCommand(1, '')
   .alias('h', 'help')
   .alias('v', 'version')
