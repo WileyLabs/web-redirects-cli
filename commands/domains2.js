@@ -3,12 +3,10 @@
  * @license MIT
  */
 
-/* eslint no-console: ["error", { allow: ["dir", "info", "warn", "error"] }] */
-
+/* eslint no-console: "off" */
 import * as path from 'node:path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import flatCache from 'flat-cache';
 import {
   convertToIdValueObjectArray,
   createDNSRecords,
@@ -33,18 +31,18 @@ import {
   putWorkerKVValuesByDomain
 } from '../lib/cloudflare.js';
 
-let cache; // empty cache object
+const cache = new Map(); // empty cache Map()
 let localZoneSettings; // empty zone settings object
 
 // util: add value to cache map without wiping existing data
 const insertValue = (key, value) => {
-  const currentData = cache.getKey(key);
+  const currentData = cache.get(key);
   if (currentData) {
-    cache.setKey(key, { ...currentData, ...value });
+    cache.set(key, { ...currentData, ...value });
   } else {
-    cache.setKey(key, value);
+    cache.set(key, value);
   }
-  return cache.getKey(key);
+  return cache.get(key);
 };
 
 const outputCloudflareZoneDetails = (zones, configDir) => {
@@ -83,6 +81,11 @@ const addZoneToAccount = async (data, account, argv) => {
     return;
   }
 
+  if (zone !== description.name) {
+    console.error(lightblue(`Zone name in YAML (${zone}) doesn't match file name [${path.relative(process.cwd(), yamlPath)}], skipping!`));
+    return;
+  }
+
   // handle zone with no redirects (e.g. parked domain)
   let redirects = [];
   if (description.redirects && description.redirects.length > 0) {
@@ -95,12 +98,9 @@ const addZoneToAccount = async (data, account, argv) => {
     message: `Add ${zone} with ${redirects.length} ${redirects.length > 1 ? 'redirects' : 'redirect'} to ${account.name}?`,
     default: false
   });
-  if (!answer.confirmCreate) {
-    console.info(lightblue('Skipping!'));
-    return;
-  }
 
   console.info('Creating the zone...');
+  // create zone
   const response = await createZone(zone, account.id);
   if (response.data.success) {
     const { id, name, status } = response.data.result;
@@ -182,13 +182,10 @@ const describe = 'List domains in the current Cloudflare account';
 // const builder = (yargs) => {};
 
 const handler = async (argv) => {
-  // initialize the zone cache
-  flatCache.clearAll(argv.cacheDir); // clear cache at start of run
-  cache = flatCache.load(argv.cacheId, argv.cacheDir); // initialize cache
-
   // load remote/cloudflare zones and add to cache
   const cfZones = await getZonesByAccount(argv.accountId);
   cfZones.map((data) => insertValue(data.name, { cloudflare: data }));
+
   outputCloudflareZoneDetails(cfZones, argv.configDir);
 
   // fetch list of all zones defined in yaml configuration
@@ -198,9 +195,12 @@ const handler = async (argv) => {
   // load local config to cache (fail on error - e.g. missing params)
   localZoneSettings = await getLocalYamlSettings(argv.configDir);
 
-  // list zones without descriptions
-  const zone_but_no_description = cache.keys().filter((key) => {
-    const zone = cache.getKey(key);
+  // get array of cache keys
+  const cacheKeys = Array.from(cache.keys());
+
+  // zones in cloudflare but not in yaml
+  const zone_but_no_description = cacheKeys.filter((key) => {
+    const zone = cache.get(key);
     return zone.cloudflare && !zone.yaml;
   });
   if (zone_but_no_description.length > 0) {
@@ -210,16 +210,21 @@ const handler = async (argv) => {
     });
   }
 
-  // list zones not in cloudflare
-  const described_but_no_zone = cache.keys().filter((key) => {
-    const zone = cache.getKey(key);
+  // zones in yaml but not in cloudflare
+  const described_but_no_zone = cacheKeys.filter((key) => {
+    const zone = cache.get(key);
     return zone.yaml && !zone.cloudflare;
   });
   if (described_but_no_zone.length > 0) {
     console.info(`\nThe following ${chalk.bold(described_but_no_zone.length)} domains are not yet in Cloudflare:`);
     described_but_no_zone.forEach((zone_name) => {
+      const zone = cache.get(zone_name);
+      let yaml_name;
+      if (zone.yaml && zone.yaml.description) {
+        yaml_name = zone.yaml.description.name;
+      }
       const yamlFilename = `${zone_name}.yaml`;
-      console.info(` - ${zone_name} (see ${path.join(argv.configDir.name, yamlFilename)})`);
+      console.info(` - ${yaml_name} (see ${path.join(argv.configDir.name, yamlFilename)})`);
     });
 
     // ask if the user is ready to create the above missing zones
@@ -237,7 +242,7 @@ const handler = async (argv) => {
       /* eslint no-restricted-syntax: ["error"] */
       for await (const zone_name of described_but_no_zone) {
         try {
-          const zone = cache.getKey(zone_name);
+          const zone = cache.get(zone_name);
           await addZoneToAccount(zone, account, argv);
         } catch (err) {
           console.dir(err);
