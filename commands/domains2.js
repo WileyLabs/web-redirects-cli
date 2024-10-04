@@ -98,6 +98,10 @@ const addZoneToAccount = async (data, account, argv) => {
     message: `Add ${zone} with ${redirects.length} ${redirects.length > 1 ? 'redirects' : 'redirect'} to ${account.name}?`,
     default: false
   });
+  if (!answer.confirmCreate) {
+    // Do nothing
+    return;
+  }
 
   console.info('Creating the zone...');
   // create zone
