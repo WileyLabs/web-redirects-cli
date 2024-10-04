@@ -16,9 +16,14 @@ import * as dash from './commands/dash.js';
 import * as dns from './commands/dns.js';
 import * as compare from './commands/compare.js';
 import * as domains from './commands/domains.js';
+import * as domains2 from './commands/domains2.js';
 import * as show from './commands/show.js';
 import * as worker from './commands/worker.js';
 import * as sync from './commands/sync.js';
+
+// page rule migration commands
+import * as migrate from './commands/page-rule-migration.js';
+import * as yamlCheck from './commands/yaml-migration-check.js';
 
 // load environment variables from `.env` file (if any)
 import 'dotenv/config';
@@ -54,23 +59,28 @@ yargs(hideBin(process.argv))
   })
   // Describe a redirect as a YAML file
   .command(describe)
-  // // List zones in current Cloudflare account
+  // List zones in current Cloudflare account, and prompt to add missing zones
   .command(domains)
-  // // Show current redirects for [domain]
+  .command(domains2)
+  // Show current redirects for [domain]
   .command(show)
-  // // Check [domain]'s settings with Cloudflare's
+  // Check [domain]'s settings with Cloudflare's
   .command(check)
-  // // Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
+  // Compare [dir]'s local redirect descriptions for [domain] with Cloudflare's
   .command(compare)
-  // // Mange the DNS records for [domain]
+  // Manage the DNS records for [domain]
   .command(dns)
-  // // Output a link to the Cloudflare Dashboard
+  // Output a link to the Cloudflare Dashboard
   .command(dash)
-  // // Setup Worker and KV stuff for large redirects
+  // Setup Worker and KV stuff for large redirects
   .command(worker)
   // WIP Synchronize zones with YAML
   .command(sync)
+  .command(migrate)
+  .command(yamlCheck)
   .demandCommand(1, '')
   .alias('h', 'help')
   .alias('v', 'version')
+  .default('cacheDir', '.cache')
+  .default('cacheId', 'zones')
   .argv;
