@@ -208,6 +208,18 @@ const processZone = async (zoneName) => {
 
   // 1. is zone in yaml, cloudflare or both?
   if (data.yaml && data.cloudflare) {
+    // is zone full?
+    if (data.cloudflare.type !== 'full') {
+      data.match = false;
+      data.messages.push('Zone not Full');
+    }
+
+    // is zone active?
+    if (data.cloudflare.status !== 'active') {
+      data.match = false;
+      data.messages.push('Zone not Active');
+    }
+
     // check zone settings
     await areZoneSettingsValid(zoneName);
     // check DNS
@@ -280,12 +292,12 @@ const handler = async (argv) => {
   }));
 
   logger(blue('Processing zones...'), true);
+  const zoneKeys = Array.from(zones.keys()).sort();
+  await Promise.all(zoneKeys.map(async (zone) => {
+    await processZone(zone);
+  }));
 
-  zones.forEach(async (value, key) => {
-    await processZone(key);
-  });
-
-  zones.forEach((value, key) => {
+  zoneKeys.forEach(async (key) => {
     const data = zones.get(key);
     if (data.match) {
       logger(`${green(key)} [${green(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
