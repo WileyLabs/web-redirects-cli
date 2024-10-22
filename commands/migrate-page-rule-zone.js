@@ -96,7 +96,7 @@ const isUpdateConfirmed = async () => inquirer.prompt({
 const renameFile = (oldPath, newPath) => {
   try {
     fs.renameSync(oldPath, newPath);
-    console.log(yellow(`YAML file renamed to ${newPath}`));
+    console.log(blue(`..YAML file renamed to ${newPath}`));
   } catch (err) {
     console.error(yellow(`Error renaming YAML file: ${err}`));
     throw err;
@@ -106,7 +106,7 @@ const renameFile = (oldPath, newPath) => {
 const writeFile = (newFilePath, data) => {
   try {
     fs.writeFileSync(newFilePath, data);
-    console.log(yellow(`New YAML file created: ${newFilePath}`));
+    console.log(blue(`..New YAML file created: ${newFilePath}`));
   } catch (err) {
     console.error(yellow(`Error writing YAML file: ${err}`));
     throw err;
@@ -117,7 +117,7 @@ const writeFile = (newFilePath, data) => {
 
 // implement `yargs` functions - START //
 
-const command = 'migrate2 <domain>';
+const command = 'migrateZone <domain>';
 const describe = '**EXP** Migration of zone from page rules to worker.';
 const builder = (yargs) => {
   yargs
@@ -197,14 +197,14 @@ const handler = async (argv) => {
       redirect
     );
     if (kvResponse.data.success) {
-      console.info(blue('  Redirect Description stored in Key Value storage successfully.'));
+      console.info(blue('..Redirect Description stored in Key Value storage successfully.'));
     }
 
     // Add worker route
     const workerName = argv.workerName ? argv.workerName : 'redir';
     const workerResponse = await createWorkerRoute(zone.id, zone_name, workerName);
     if (workerResponse.data.success) {
-      console.info(blue('  Worker Route configured successfully.'));
+      console.info(blue('..Worker Route configured successfully.'));
     }
 
     // Remove page rule
@@ -213,7 +213,7 @@ const handler = async (argv) => {
     const deleteResponse = await deletePageRule(zone.id, rules[0].id);
     // console.log(deleteResponse);
     if (deleteResponse.data.success) {
-      console.info(blue('  Page Rule removed successfully.'));
+      console.info(blue('..Page Rule removed successfully.'));
     }
 
     // Output note to user that updated yaml will need to be checked in
