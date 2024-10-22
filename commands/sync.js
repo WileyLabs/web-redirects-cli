@@ -16,6 +16,7 @@ import {
 import {
   getDnsRecordsByZoneId,
   getPageRulesByZoneId,
+  getWorkerRoutesByZoneId,
   getZonesByAccount,
   getZoneSettingsById,
   listWorkerDomains
@@ -227,10 +228,15 @@ const processZone = async (zoneName) => {
     // TODO check redirects - page rules (?) and worker KV
     await hasConfiguredRedirects(zoneName);
 
-    // TODO check worker routes/custom domains
+    // TODO check worker routes (custom domains already fetched)
+    const existingWorkerRoutes = await getWorkerRoutesByZoneId(data.cloudflare.id);
+    if (existingWorkerRoutes && existingWorkerRoutes.length > 0) {
+      data.existingWorkerRoutes = existingWorkerRoutes;
+    }
 
     return data;
   }
+
   if (data.yaml) {
     // TODO option to add zone to Cloudflare
     data.match = false;
@@ -299,13 +305,26 @@ const handler = async (argv) => {
 
   zoneKeys.forEach(async (key) => {
     const data = zones.get(key);
+    const type = [];
+    if (data.cf_page_rules && data.cf_page_rules.length > 0) {
+      type.push(`Page Rules (${data.cf_page_rules.length})`);
+    }
+    if (data.existingWorkerRoutes && data.existingWorkerRoutes.length > 0) {
+      type.push(`Worker Routes (${data.existingWorkerRoutes.length})`);
+    }
+    if (data.cloudflare_worker && data.cloudflare_worker.length > 0) {
+      type.push(`Custom Domains (${data.cloudflare_worker.length})`);
+    }
     if (data.match) {
-      logger(`${green(key)} [${green(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
+      logger(`${green(key)} [${green(data.messages.join('; '))}] [${purple(type.toString())}]`, true);
     } else {
-      logger(`${lightblue(key)} [${orange(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
+      logger(`${lightblue(key)} [${orange(data.messages.join('; '))}] [${purple(type.toString())}]`, true);
       // debug output to log file
       if (data.cloudflare_worker) {
         logger(`CLOUDFLARE_WORKER: ${JSON.stringify(data.cloudflare_worker)}`);
+      }
+      if (data.existingWorkerRoutes) {
+        logger(`WORKER_ROUTES: ${JSON.stringify(data.existingWorkerRoutes)}`);
       }
       if (data.dns) {
         logger(`DNS_CONFIGURED: ${data.dns.expected ? JSON.stringify(data.dns.expected) : ''}`);
