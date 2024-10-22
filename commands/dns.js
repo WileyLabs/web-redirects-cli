@@ -3,6 +3,7 @@
  * @license MIT
  */
 
+/* eslint no-console: "off" */
 import chalk from 'chalk';
 import SimpleTable from 'cli-simple-table';
 import inquirer from 'inquirer';

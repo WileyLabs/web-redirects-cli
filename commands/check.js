@@ -2,6 +2,8 @@
  * @copyright 2020 John Wiley & Sons, Inc.
  * @license MIT
  */
+
+/* eslint no-console: "off" */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';

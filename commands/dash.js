@@ -1,3 +1,4 @@
+/* eslint no-console: "off" */
 import open from 'open';
 
 /**
