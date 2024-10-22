@@ -181,7 +181,7 @@ const addZoneToAccount = async (data, account, argv) => {
 /**
  * Lists missing zones in Cloudflare, and creates them if desired.
  */
-const command = ['domains2', 'zones2'];
+const command = ['domains', 'zones'];
 const describe = 'List domains in the current Cloudflare account';
 // const builder = (yargs) => {};
 

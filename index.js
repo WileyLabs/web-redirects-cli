@@ -15,7 +15,7 @@ import * as check from './commands/check.js';
 import * as dash from './commands/dash.js';
 import * as dns from './commands/dns.js';
 import * as compare from './commands/compare.js';
-import * as domains2 from './commands/domains2.js';
+import * as domains from './commands/domains.js';
 import * as show from './commands/show.js';
 import * as worker from './commands/worker.js';
 import * as sync from './commands/sync.js';
@@ -61,7 +61,7 @@ yargs(hideBin(process.argv))
   // Describe a redirect as a YAML file
   .command(describe)
   // List zones in current Cloudflare account, and prompt to add missing zones
-  .command(domains2)
+  .command(domains)
   // Show current redirects for [domain]
   .command(show)
   // Check [domain]'s settings with Cloudflare's
