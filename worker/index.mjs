@@ -1,3 +1,4 @@
+/* eslint no-console: "off" */
 import { parseDomain } from 'parse-domain';
 
 const default_status = 301;
@@ -83,8 +84,8 @@ export async function handleRequest(request, env) {
   const url = new URL(request.url);
   const zone = await getValuesForHostname(url.hostname, env.descriptions);
   const found = zone.redirects.find((r) => {
-    // we've got a regex! (N.B. Regexes must be prefixed by '^')
     if (r.from[0] === '^') {
+      // we've got a regex! (N.B. Regexes must be prefixed by '^')
       const matches = getRequestString(url, r).match(getRedirectRegEx(r));
       return matches !== null;
     }
@@ -98,13 +99,16 @@ export async function handleRequest(request, env) {
     if (found.from[0] === '^') {
       redir_to = getRequestString(url, found).replace(getRedirectRegEx(found), found.to);
     }
+    console.info(`REDIRECT: target = ${redir_to}`);
     return Response.redirect(redir_to, ('status' in found ? found.status : default_status));
   }
   if (zone.fallthrough === true) {
     // fall through to the origin server
+    console.info('NO MATCH: passthrough');
     return fetch(request);
   }
   // default behaviour - no fallthrough
+  console.info('NO MATCH: 404');
   return respondWith404();
 }
 

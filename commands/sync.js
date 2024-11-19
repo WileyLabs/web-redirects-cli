@@ -2,6 +2,8 @@
  * @copyright 2023 John Wiley & Sons, Inc.
  * @license MIT
  */
+
+/* eslint no-console: "off" */
 import fs from 'fs';
 import dateformat from 'dateformat';
 import stripAnsi from 'strip-ansi';
@@ -14,6 +16,7 @@ import {
 import {
   getDnsRecordsByZoneId,
   getPageRulesByZoneId,
+  getWorkerRoutesByZoneId,
   getZonesByAccount,
   getZoneSettingsById,
   listWorkerDomains
@@ -206,6 +209,18 @@ const processZone = async (zoneName) => {
 
   // 1. is zone in yaml, cloudflare or both?
   if (data.yaml && data.cloudflare) {
+    // is zone full?
+    if (data.cloudflare.type !== 'full') {
+      data.match = false;
+      data.messages.push('Zone not Full');
+    }
+
+    // is zone active?
+    if (data.cloudflare.status !== 'active') {
+      data.match = false;
+      data.messages.push('Zone not Active');
+    }
+
     // check zone settings
     await areZoneSettingsValid(zoneName);
     // check DNS
@@ -213,10 +228,15 @@ const processZone = async (zoneName) => {
     // TODO check redirects - page rules (?) and worker KV
     await hasConfiguredRedirects(zoneName);
 
-    // TODO check worker routes/custom domains
+    // TODO check worker routes (custom domains already fetched)
+    const existingWorkerRoutes = await getWorkerRoutesByZoneId(data.cloudflare.id);
+    if (existingWorkerRoutes && existingWorkerRoutes.length > 0) {
+      data.existingWorkerRoutes = existingWorkerRoutes;
+    }
 
     return data;
   }
+
   if (data.yaml) {
     // TODO option to add zone to Cloudflare
     data.match = false;
@@ -278,30 +298,43 @@ const handler = async (argv) => {
   }));
 
   logger(blue('Processing zones...'), true);
+  const zoneKeys = Array.from(zones.keys()).sort();
+  await Promise.all(zoneKeys.map(async (zone) => {
+    await processZone(zone);
+  }));
 
-  zones.forEach(async (value, key) => {
-    await processZone(key);
-  });
-
-  zones.forEach((value, key) => {
+  zoneKeys.forEach(async (key) => {
     const data = zones.get(key);
+    const type = [];
+    if (data.cf_page_rules && data.cf_page_rules.length > 0) {
+      type.push(`Page Rules (${data.cf_page_rules.length})`);
+    }
+    if (data.existingWorkerRoutes && data.existingWorkerRoutes.length > 0) {
+      type.push(`Worker Routes (${data.existingWorkerRoutes.length})`);
+    }
+    if (data.cloudflare_worker && data.cloudflare_worker.length > 0) {
+      type.push(`Custom Domains (${data.cloudflare_worker.length})`);
+    }
     if (data.match) {
-      logger(`${green(key)} [${green(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
+      logger(`${green(key)} [${green(data.messages.join('; '))}] [${purple(type.toString())}]`, true);
     } else {
-      logger(`${lightblue(key)} [${orange(data.messages.join('; '))}] [${purple(data.cloudflare_worker ? 'Worker' : 'Page Rules')}]`, true);
+      logger(`${lightblue(key)} [${orange(data.messages.join('; '))}] [${purple(type.toString())}]`, true);
       // debug output to log file
       if (data.cloudflare_worker) {
         logger(`CLOUDFLARE_WORKER: ${JSON.stringify(data.cloudflare_worker)}`);
+      }
+      if (data.existingWorkerRoutes) {
+        logger(`WORKER_ROUTES: ${JSON.stringify(data.existingWorkerRoutes)}`);
       }
       if (data.dns) {
         logger(`DNS_CONFIGURED: ${data.dns.expected ? JSON.stringify(data.dns.expected) : ''}`);
         logger(`DNS_CLOUDFLARE: ${data.dns.actual ? JSON.stringify(data.dns.actual) : ''}`);
       }
       if (data.yaml_redirects) {
-        logger(`REDIRECTS_CONFIGURED: ${JSON.stringify(data.yaml_redirects)}`);
+        logger(`REDIRECTS_CONFIGURED: ${data.yaml_redirects.length}`);
       }
       if (data.cf_page_rules) {
-        logger(`REDIRECTS_PAGERULES: ${JSON.stringify(data.cf_page_rules)}`);
+        logger(`REDIRECTS_PAGERULES: ${data.cf_page_rules.length}`);
       }
     }
   });

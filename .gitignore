@@ -1,5 +1,8 @@
 node_modules/
 .cache-db/
+.wrangler/
+worker-local/
+.vscode/
 .env
 wrangler.toml
 *.log
