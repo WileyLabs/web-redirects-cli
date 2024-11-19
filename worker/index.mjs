@@ -64,6 +64,7 @@ async function getValuesForHostname(hostname, descriptions) {
     /* eslint no-await-in-loop: 0 */
     const json = await descriptions.get(sub, 'json');
     if (json) {
+      console.info(`FOUND: host = ${hostname}; key = ${sub}`);
       return json; // return on first match ('deepest' subdomain)
     }
     subDomains.shift();
@@ -71,32 +72,16 @@ async function getValuesForHostname(hostname, descriptions) {
   // no match  so check apex
   const json = await descriptions.get(apex, 'json');
   if (json) {
+    console.info(`FOUND: host = ${hostname}; key = ${apex}`);
     return json;
   }
   // always return empty redirects array, even if no matches
+  console.info(`NOT FOUND: ${hostname}`);
   return { redirects: [] };
 }
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
-
-  /* Redirect HTTPS requests only (environment variable configuration): False by default
-   * This is added to allow HTTP to HTTPS redirects to be handled via the
-   * Cloudflare 'Always Use HTTPS' setting (then the redirect is handled via
-   * the worker).
-   * Without this enabled, the domain will fail Upguard's 'HTTPS redirect not supported'
-   * check - because the domain changes when redirecting to HTTPS.
-   *
-   * NOTE: This should not actually be required - as 'Always Use HTTPS' visited before 
-   * worker called.
-   */
-  const redirectHttpsOnly = env.HTTPS_ONLY ? env.HTTPS_ONLY : false;
-  if (redirectHttpsOnly && url.protocol !== 'https:') {
-    // pass through
-    console.info('NOT HTTPS PROTOCOL: passthrough');
-    return fetch(request);
-  }
-
   const zone = await getValuesForHostname(url.hostname, env.descriptions);
   const found = zone.redirects.find((r) => {
     if (r.from[0] === '^') {

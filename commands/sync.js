@@ -331,10 +331,10 @@ const handler = async (argv) => {
         logger(`DNS_CLOUDFLARE: ${data.dns.actual ? JSON.stringify(data.dns.actual) : ''}`);
       }
       if (data.yaml_redirects) {
-        logger(`REDIRECTS_CONFIGURED: ${JSON.stringify(data.yaml_redirects)}`);
+        logger(`REDIRECTS_CONFIGURED: ${data.yaml_redirects.length}`);
       }
       if (data.cf_page_rules) {
-        logger(`REDIRECTS_PAGERULES: ${JSON.stringify(data.cf_page_rules)}`);
+        logger(`REDIRECTS_PAGERULES: ${data.cf_page_rules.length}`);
       }
     }
   });

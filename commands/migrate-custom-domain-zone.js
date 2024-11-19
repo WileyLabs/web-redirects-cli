@@ -1,18 +1,24 @@
 /* eslint no-console: "off" */
 import inquirer from 'inquirer';
-import * as yaml from 'js-yaml';
+// import * as yaml from 'js-yaml';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
+// import * as path from 'node:path';
 
 import {
   getLocalYamlZone
 } from '../lib/migration.js';
 import {
-  blue, orange, yellow,
+  blue, orange, yellow, lightblue
 } from '../lib/sync-shared.js';
 import {
+  createDNSRecords
+} from '../lib/shared.js'
+import {
   createWorkerRoute,
+  deleteDnsRecord,
   deletePageRule,
+  deleteWorkerDomain,
+  getDnsRecordsByZoneId,
   getPageRulesByZoneId,
   getWorkerRoutesByZoneId,
   getZonesByName,
@@ -24,6 +30,23 @@ import {
 import 'dotenv/config';
 
 // implement internal functions - START //
+
+const getDefaultDnsRecords = (zoneName) => [
+  {
+    name: zoneName,
+    type: 'A',
+    content: '192.0.2.0',
+    ttl: 1, // 1 = auto
+    proxied: true
+  },
+  {
+    name: `www.${zoneName}`,
+    type: 'CNAME',
+    content: zoneName,
+    ttl: 1, // 1 = auto
+    proxied: true
+  }
+];
 
 const getCloudflareZone = async (zone_name, account_id) => {
   const zones = await getZonesByName(zone_name, account_id);
@@ -86,23 +109,6 @@ const isValidWorkerConfiguration = async (zone_name, zone_id, account_id) => {
   return true;
 };
 
-const isUpdateConfirmed = async () => inquirer.prompt({
-  type: 'confirm',
-  name: 'updateConfirmed',
-  message: 'Are you ready to migrate this zone to use worker routes?',
-  default: false
-});
-
-const renameFile = (oldPath, newPath) => {
-  try {
-    fs.renameSync(oldPath, newPath);
-    console.log(blue(`..YAML file renamed to ${newPath}`));
-  } catch (err) {
-    console.error(yellow(`Error renaming YAML file: ${err}`));
-    throw err;
-  }
-};
-
 const writeFile = (newFilePath, data) => {
   try {
     fs.writeFileSync(newFilePath, data);
@@ -117,7 +123,7 @@ const writeFile = (newFilePath, data) => {
 
 // implement `yargs` functions - START //
 
-const command = 'migrateZone <domain>';
+const command = 'migrateZone2 <domain>';
 const describe = '**EXP** Migration of zone from page rules to worker.';
 const builder = (yargs) => {
   yargs
@@ -152,53 +158,7 @@ const handler = async (argv) => {
       return;
     }
 
-    const validRedirect = await isValidRedirectConfiguration(yaml_data, zone_name, zone.id);
-    if (!validRedirect) {
-      console.log(orange('FAILED REDIRECT CHECKS!'));
-      return;
-    }
-
-    const validWorker = await isValidWorkerConfiguration(zone_name, zone.id, account_id);
-    if (!validWorker) {
-      console.log(orange('FAILED WORKER CHECKS!'));
-      return;
-    }
-
-    // Prompt to make changes
-    // const answer = await isUpdateConfirmed();
-    // if (!answer || !answer.updateConfirmed) {
-    //   console.log(blue('Exiting...'));
-    //   return;
-    // }
-
     console.log(blue('UPDATING...'));
-
-    // NEED TO REFACTOR and CLEAN UP THE UPDATE CODE
-
-    // write new YAML file (backup previous file)
-    const redirect = {
-      name: zone_name,
-      redirects: [{
-        from: '^/(.*)',
-        to: yaml_data.redirects[0].to
-      }]
-    };
-    const yamlStr = yaml.dump(redirect);
-    const yamlPath = path.resolve(config_dir.name, `${zone_name}.yaml`);
-    // const backupPath = path.resolve(config_dir.name, `${zone_name}.yaml.bup`);
-    // renameFile(yamlPath, backupPath);
-    writeFile(yamlPath, yamlStr);
-
-    // Add converted redirect to `Workers KV`
-    const kvResponse = await putWorkerKVValuesByDomain(
-      account_id,
-      argv.workerKvNamespace,
-      zone_name,
-      redirect
-    );
-    if (kvResponse.data.success) {
-      console.info(blue('..Redirect Description stored in Key Value storage successfully.'));
-    }
 
     // Add worker route
     const workerName = argv.workerName ? argv.workerName : 'redir';
@@ -207,14 +167,41 @@ const handler = async (argv) => {
       console.info(blue('..Worker Route configured successfully.'));
     }
 
-    // Remove page rule
-    const rules = await getPageRulesByZoneId(zone.id); // DUPLICATE!
-    // assuming single rule!
-    const deleteResponse = await deletePageRule(zone.id, rules[0].id);
-    // console.log(deleteResponse);
-    if (deleteResponse.data.success) {
-      console.info(blue('..Page Rule removed successfully.'));
+    // Remove custom domains
+    const cfWorkerDomains = await listWorkerDomains(account_id);
+    const customDomains = cfWorkerDomains.filter((d) => zone_name === d.zone_name);
+    if (customDomains.length !== 2) {
+      console.warn(orange('NOT 2 CUSTOM DOMAINS!'));
+      return;
     }
+    await deleteWorkerDomain(account_id, customDomains[0].id);
+    await deleteWorkerDomain(account_id, customDomains[1].id);
+    // customDomains.forEach(async (d) => {
+    //   const deleteResponse = await deleteWorkerDomain(account_id, d.id);
+    //   // console.log(deleteResponse);
+    // });
+    // if (customDomains.data.success) {
+    //   console.info(blue('..Custom domains removed successfully.'));
+    // }
+
+    // Add standard DNS
+    // const existingDns = await getDnsRecordsByZoneId(zone.id);
+    // if (existingDns.length > 0) {
+    //   const deleteResources = await inquirer.prompt({
+    //     type: 'confirm',
+    //     name: 'confirmDelete',
+    //     message: yellow(`${zone} has existing DNS records! Delete these before continuing?`),
+    //     default: false
+    //   });
+    //   if (!deleteResources.confirmDelete) {
+    //     console.warn(lightblue('Exiting zone creation before complete! Check zone manually.'));
+    //     return;
+    //   }
+    //   const promises = existingDns.map((record) => deleteDnsRecord(zone.id, record.id));
+    //   await Promise.allSettled(promises);
+    // }
+
+    await createDNSRecords(zone.id, getDefaultDnsRecords(zone.name));
 
     // Output note to user that updated yaml will need to be checked in
   }
