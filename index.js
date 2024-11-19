@@ -20,13 +20,6 @@ import * as show from './commands/show.js';
 import * as worker from './commands/worker.js';
 import * as sync from './commands/sync.js';
 
-// page rule migration commands
-// import * as migrate from './commands/page-rule-migration.js';
-import * as migrateZone from './commands/migrate-page-rule-zone.js';
-import * as migrateZone2 from './commands/migrate-custom-domain-zone.js';
-// import * as yamlCheck1 from './commands/yaml-migration-check-1.js';
-// import * as yamlCheck2 from './commands/yaml-migration-check-2.js';
-
 // load environment variables from `.env` file (if any)
 import 'dotenv/config';
 
@@ -77,11 +70,6 @@ yargs(hideBin(process.argv))
   .command(worker)
   // WIP Synchronize zones with YAML
   .command(sync)
-  // .command(migrate)
-  .command(migrateZone)
-  .command(migrateZone2)
-  // .command(yamlCheck1)
-  // .command(yamlCheck2)
   .demandCommand(1, '')
   .alias('h', 'help')
   .alias('v', 'version')
