@@ -1,5 +1,4 @@
 /* globals describe, expect, it */
-/* eslint-disable quotes, quote-props */
 
 import {
   collectReplacementRecords,
