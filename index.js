@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-/* eslint-disable no-unused-expressions */
-
 /**
  * @copyright 2020 John Wiley & Sons, Inc.
  * @license MIT

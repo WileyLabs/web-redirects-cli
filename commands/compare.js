@@ -155,7 +155,7 @@ const handler = (argv) => {
                   type: 'confirm',
                   name: 'confirmUpdates',
                   message: `Update ${zone.name} to make the above modifications?`,
-                  default: false,
+                  default: false
                 }).then((answers) => {
                   if (answers.confirmUpdates) {
                     // TODO: switch this to use Promise.all?

@@ -148,11 +148,11 @@ export default {
   // The test environment that will be used for testing
   testEnvironment: 'miniflare',
   testEnvironmentOptions: {
-    kvNamespaces: ["descriptions"],
+    kvNamespaces: ["descriptions"]
   },
   
   testRegex: "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|js?|tsx?|ts?|mjs?)$",
-  moduleFileExtensions: ["js", "jsx", "mjs"],
+  moduleFileExtensions: ["js", "jsx", "mjs"]
 
   // Adds a location field to test results
   // testLocationInResults: false,
