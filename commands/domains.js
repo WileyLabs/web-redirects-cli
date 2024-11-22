@@ -109,6 +109,8 @@ const addZoneToAccount = async (data, account, argv) => {
   if (response.data.success) {
     const { id, name, status } = response.data.result;
     console.info(`  ${chalk.bold(name)}${chalk.gray(' has been created and is ')}${lightblue(status)}`);
+    const nameservers = `nameservers: ${response.data.result.name_servers.join(', ')}`;
+    console.info(`  ${lightblue(nameservers)}`);
 
     // update zone settings
     const settingsResponse = await updateZoneSettingsById(id, {
