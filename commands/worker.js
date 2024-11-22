@@ -1,69 +1,63 @@
 /* eslint no-console: "off" */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import chalk from 'chalk';
 import * as YAML from 'js-yaml';
 import {
-  attachServiceToHost,
+  getWorkerRoutesByZoneId,
   getZonesByName,
   putWorkerKVValuesByDomain
 } from '../lib/cloudflare.js';
+import {
+  lightblue,
+  orange
+} from '../lib/shared.js';
 
 /**
  * Describe a redirect as a YAML file
  */
 const command = ['worker <domain>'];
-const describe = 'Setup a Cloudflare Worker for these redirects';
+const describe = 'Update worker redirects';
 const builder = (yargs) => yargs.demandOption('configDir')
   .positional('domain', {
-    describe: 'Domain to redirect',
+    describe: 'Domain to update',
     type: 'string'
   });
-const handler = (argv) => {
+
+const handler = async (argv) => {
   const { configDir, domain } = argv;
+
+  // check zone exists
+  const zones = await getZonesByName(domain, argv.accountId);
+  if (!zones || zones.length < 1) {
+    console.error(orange(`No matching zone found for '${domain}'!`));
+    process.exit(1);
+  }
+  if (zones.length > 1) {
+    console.error(orange(`Multiple matching zones found for ${domain}: ${zones.map((zone) => zone.name)}`));
+    process.exit(1);
+  }
+
+  // check worker route exists
+  const existingWorkerRoutes = await getWorkerRoutesByZoneId(zones[0].id);
+  if (!existingWorkerRoutes || existingWorkerRoutes.length !== 1) {
+    console.error(orange(`Expecting a single worker route to be configured: ${existingWorkerRoutes}`));
+    process.exit(1);
+  }
+
   // open the redirects file
   const filepath = path.join(configDir.name, `${domain}.yaml`);
   const description = YAML.load(fs.readFileSync(filepath));
-  // push it to the KV
-  // TODO: check (earlier than here!) whether WR_WORKER_KV_NAMESPACE is set
-  putWorkerKVValuesByDomain(argv.accountId, argv.workerKvNamespace, domain, description)
-    .then(({ data }) => {
-      if (data.success) {
-        console.log('Redirect Description stored in Key Value storage successfully!');
-      }
-    })
-    .catch(console.error);
-  // get the zone ID for the domain in question
-  getZonesByName(domain, argv.accountId)
-    .then((results) => {
-      switch (results.length) {
-        case 0:
-          throw new Error(`No matching zone found for ${domain}!`);
-        case 1:
-          return results[0].id;
-        default:
-          throw new Error(`Multiple matching zones found for ${domain}: ${results.map((result) => result.name)}`);
-      }
-    })
-    .then((zone_id) => {
-      // TODO: handle situations where more than just `www` and the apex redirect
-      [domain, `www.${domain}`].forEach((hostname) => {
-        // setup the Worker route or Worker custom domain
-        attachServiceToHost(argv.accountId, zone_id, hostname)
-          .then(() => {
-            console.log(`Setup ${hostname} to point to the ${chalk.bold('redir')} Worker.`);
-          })
-          .catch((err) => {
-            if (err.response.status === 409) {
-              console.error(`Failed to setup ${hostname} due to conflict.`);
-              console.error(err.response.data.errors);
-            } else {
-              console.error(err);
-            }
-          });
-      });
-    })
-    .catch(console.error);
+
+  // add redirects to worker KV
+  const kvResponse = await putWorkerKVValuesByDomain(
+    argv.accountId,
+    argv.workerKvNamespace,
+    domain,
+    description
+  );
+  if (kvResponse.data.success) {
+    console.info(lightblue('Redirect Description stored in Key Value storage successfully.'));
+  }
 };
 
 export {
