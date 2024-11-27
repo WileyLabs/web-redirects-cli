@@ -4,20 +4,18 @@
  */
 
 /* eslint no-console: "off" */
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import chalk from 'chalk';
-import inquirer from 'inquirer';
-import { Level } from 'level';
 import * as YAML from 'js-yaml';
 import {
   error,
-  convertPageRulesToRedirects,
-  outputPageRulesAsText
+  lightblue,
+  orange
 } from '../lib/shared.js';
 import {
-  getZoneById,
-  getPageRulesByZoneId
+  green
+} from '../lib/sync-shared.js';
+import {
+  getWorkerKVValuesByDomain,
+  getZonesByName
 } from '../lib/cloudflare.js';
 
 /**
@@ -45,95 +43,28 @@ const builder = (yargs) => {
       demandOption: true
     });
 };
-const handler = (argv) => {
+const handler = async (argv) => {
   if (!('domain' in argv)) {
     error('Which domain where you wanting to show redirects for?');
   } else {
-    // setup a local level store for key/values (mostly)
-    const db = new Level(`${process.cwd()}/.cache-db`);
-
-    db.get(argv.domain)
-      .then((zone_id) => {
-        Promise.all([
-          getZoneById(zone_id),
-          getPageRulesByZoneId(zone_id)
-        ])
-          .then((results) => {
-            const [zone, pagerules] = results;
-            let output = {};
-
-            switch (argv.format) {
-              case 'text':
-                if (!argv.export) {
-                  console.log(`Current redirects for ${argv.domain} (${zone_id}):
-  Zone Info:
-    ${chalk.bold(zone.name)} - ${zone.id}
-    ${chalk.green(zone.plan.name)} - ${pagerules.length} of ${zone.meta.page_rule_quota} Page Rules used.
-
-  Page Rules:`);
-                  outputPageRulesAsText(pagerules);
-                }
-                // TODO: check for worker routes also
-                break;
-              case 'json':
-              case 'yaml':
-                output = {
-                  'cloudflare:id': zone.id,
-                  name: zone.name,
-                  redirects: convertPageRulesToRedirects(pagerules)
-                };
-
-                if (!argv.export) {
-                  console.dir(output, { depth: 5 });
-                } else {
-                  const redir_filepath = path.join(
-                    process.cwd(),
-                    argv.configDir.name,
-                    `${zone.name}.${argv.format}`
-                  );
-                  const formatForOutput = argv.format === 'json'
-                    ? (o) => JSON.stringify(o, null, 2)
-                    : YAML.dump;
-                  // TODO: also check for file in the alternate format (so we don't get dupes)
-                  if (fs.existsSync(redir_filepath)) {
-                    inquirer.prompt({
-                      type: 'confirm',
-                      name: 'confirmOverwrite',
-                      message: `Hrm. ${redir_filepath} already exists. Overwrite it?`,
-                      default: false
-                    }).then((answers) => {
-                      if (answers.confirmOverwrite) {
-                        try {
-                          fs.writeFileSync(redir_filepath, formatForOutput(output));
-                          console.log(`${path.relative(process.cwd(), redir_filepath)} has been successfully updated.`);
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      } else {
-                        console.log('Sorry...');
-                      }
-                    });
-                  } else {
-                    // TODO: refactor the surrounding mess to avoid this copy/paste
-                    try {
-                      fs.writeFileSync(redir_filepath, formatForOutput(output));
-                      console.log(`${path.relative(process.cwd(), redir_filepath)} has been successfully written.`);
-                    } catch (err) {
-                      console.error(err);
-                    }
-                  }
-                }
-                // TODO: check for worker routes also
-                break;
-              default:
-                error('Sorry, that format is not yet supported.');
-                break;
-            }
-          })
-          .catch(console.error);
-      })
-      .catch(console.error);
-    db.close();
+    // show zone info
+    const zones = await getZonesByName(argv.domain, argv.accountId);
+    if (!zones || zones.length < 1) {
+      console.error(orange(`No matching zone found for '${argv.domain}'!`));
+      process.exit(1);
+    }
+    if (zones.length > 1) {
+      console.error(orange(`Multiple matching zones found for ${argv.domain}: ${zones.map((zone) => zone.name)}`));
+      process.exit(1);
+    }
+    const zone = zones[0];
+    console.log(lightblue(`Current redirects for zone: ${argv.domain} (${zone.id})`));
+    console.log(lightblue(`Worker KV value as YAML:`));
+    // get KV value
+    const kvValue = await getWorkerKVValuesByDomain(argv.accountId, argv.workerKvNamespace, argv.domain);
+    // convert (json) to yaml format
+    const redirects = YAML.dump(kvValue);
+    console.log(green(redirects));
   }
 };
 
