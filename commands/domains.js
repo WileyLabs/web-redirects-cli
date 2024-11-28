@@ -11,13 +11,11 @@ import {
   convertToIdValueObjectArray,
   createDNSRecords,
   getDefaultDnsRecords,
+  getLocalYamlSettings,
+  getLocalYamlZones,
   lightblue,
   purple
 } from '../lib/shared.js';
-import {
-  getLocalYamlSettings,
-  getLocalYamlZones
-} from '../lib/sync-shared.js';
 import {
   deleteDnsRecord,
   deleteWorkerRouteById,
