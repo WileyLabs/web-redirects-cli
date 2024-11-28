@@ -7,12 +7,10 @@
 import * as YAML from 'js-yaml';
 import {
   error,
+  green,
   lightblue,
   orange
 } from '../lib/shared.js';
-import {
-  green
-} from '../lib/sync-shared.js';
 import {
   getWorkerKVValuesByDomain,
   getZonesByName

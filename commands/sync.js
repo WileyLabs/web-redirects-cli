@@ -9,10 +9,14 @@ import dateformat from 'dateformat';
 import stripAnsi from 'strip-ansi';
 import lodash from 'lodash';
 import {
-  green, blue, orange, purple, lightblue,
+  green,
+  blue,
+  orange,
+  purple,
+  lightblue,
   getLocalYamlSettings,
   getLocalYamlZones
-} from '../lib/sync-shared.js';
+} from '../lib/shared.js';
 import {
   getDnsRecordsByZoneId,
   getPageRulesByZoneId,
