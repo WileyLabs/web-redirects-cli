@@ -43,27 +43,26 @@ const builder = (yargs) => {
 };
 const handler = async (argv) => {
   if (!('domain' in argv)) {
+    // NOTE: this should be redundant as yargs treats 'domain' as required argument
     error('Which domain where you wanting to show redirects for?');
-  } else {
-    // show zone info
-    const zones = await getZonesByName(argv.domain, argv.accountId);
-    if (!zones || zones.length < 1) {
-      console.error(orange(`No matching zone found for '${argv.domain}'!`));
-      process.exit(1);
-    }
-    if (zones.length > 1) {
-      console.error(orange(`Multiple matching zones found for ${argv.domain}: ${zones.map((zone) => zone.name)}`));
-      process.exit(1);
-    }
-    const zone = zones[0];
-    console.log(lightblue(`Current redirects for zone: ${argv.domain} (${zone.id})`));
-    console.log(lightblue(`Worker KV value as YAML:`));
-    // get KV value
-    const kvValue = await getWorkerKVValuesByDomain(argv.accountId, argv.workerKvNamespace, argv.domain);
-    // convert (json) to yaml format
-    const redirects = YAML.dump(kvValue);
-    console.log(green(redirects));
   }
+
+  // show zone info
+  const zones = await getZonesByName(argv.domain, argv.accountId);
+  if (!zones || zones.length < 1) {
+    error(`No matching zone found for '${argv.domain}'!`);
+  }
+  if (zones.length > 1) {
+    error(`Multiple matching zones found for ${argv.domain}: ${zones.map((zone) => zone.name)}`);
+  }
+  const zone = zones[0];
+  console.log(lightblue(`Current redirects for zone: ${argv.domain} (${zone.id})`));
+  console.log(lightblue(`Worker KV value as YAML:`));
+  // get KV value
+  const kvValue = await getWorkerKVValuesByDomain(argv.accountId, argv.workerKvNamespace, argv.domain);
+  // convert (json) to yaml format
+  const redirects = YAML.dump(kvValue);
+  console.log(green(redirects));
 };
 
 export {
