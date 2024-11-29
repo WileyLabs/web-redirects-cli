@@ -34,7 +34,7 @@ const handler = async (argv) => {
   // check for single zone argument
   if (!('domain' in argv)) {
     // NOTE: this should be redundant as yargs treats 'domain' as required argument
-    error('Which domain where you wanting to show redirects for?');
+    error('Which domain were you wanting to compare redirects for?');
   } 
 
   // show zone info

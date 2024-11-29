@@ -6,19 +6,18 @@
 /* eslint no-console: "off" */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import chalk from 'chalk';
 import * as YAML from 'js-yaml';
 import { updatedDiff } from 'deep-object-diff';
 import inquirer from 'inquirer';
-import { Level } from 'level';
 import {
+  error,
+  green,
   orange,
   warn,
   convertToIdValueObjectArray
 } from '../lib/shared.js';
 import {
-  getZonesByAccount,
-  getZoneById,
+  getZonesByName,
   getZoneSettingsById,
   updateZoneSettingsById
 } from '../lib/cloudflare.js';
@@ -26,7 +25,7 @@ import {
 function outputDifferences(updates, current, l = 0) {
   Object.keys(updates).forEach((key) => {
     if (typeof updates[key] !== 'object') {
-      console.log(`${'  '.repeat(l)}${key}: ${chalk.green(updates[key])} (currently ${orange(current[key])})`);
+      console.log(`${'  '.repeat(l)}${key}: ${green(updates[key])} (currently ${orange(current[key])})`);
     } else {
       console.log(`${'  '.repeat(l)}${key}:`);
       outputDifferences(updates[key], current[key], l + 1);
@@ -59,7 +58,7 @@ function checkSecurity(configDir, zone, settings, another) {
           if (answers.confirmUpdates) {
             updateZoneSettingsById(zone.id, { items: convertToIdValueObjectArray(updates) })
               .then(() => {
-                console.log(chalk.green(`\nSuccess! ${zone.name} settings have been updated.`));
+                console.log(green(`\nSuccess! ${zone.name} settings have been updated.`));
                 if (another) another();
               }).catch((err) => {
                 console.error(`Caught error: ${err}`);
@@ -69,7 +68,7 @@ function checkSecurity(configDir, zone, settings, another) {
           }
         }).catch(console.error);
       } else {
-        console.log(`${chalk.bold.green('✓')} ${zone.name} settings match the preferred configuration.`);
+        console.log(`${green('✓')} ${zone.name} settings match the preferred configuration.`);
         if (another) another();
       }
     } catch (err) {
@@ -81,59 +80,36 @@ function checkSecurity(configDir, zone, settings, another) {
 /**
  * Check a [domain]'s settings and redirects
  */
-const command = 'check [domain]';
-const describe = 'Check a [domain]\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
+const command = 'check domain';
+const describe = 'Check a domain\'s settings with [configDir]\'s default configuration (`.settings.yaml`)';
 const builder = (yargs) => {
   yargs
     .positional('domain', {
       type: 'string',
-      describe: 'a valid domain name'
+      describe: 'a valid domain name',
+      demandOption: true
     })
     .demandOption('configDir');
 };
-const handler = (argv) => {
+const handler = async (argv) => {
   if (!('domain' in argv)) {
-    getZonesByAccount(argv.accountId)
-      .then((all_zones) => {
-        function another() {
-          const zone = all_zones.shift(); // one at a time
-          if (zone) {
-            // get the settings for the zone
-            getZoneSettingsById(zone.id)
-              // pass all the details to checkSecurity
-              .then(async (data) => {
-                checkSecurity(argv.configDir, zone, data, another);
-              }).catch((err) => {
-                console.error(`Caught error: ${err}`);
-              });
-          }
-        }
-        another();
-      });
-  } else {
-    // setup a local level store for key/values (mostly)
-    const db = new Level(`${process.cwd()}/.cache-db`);
-
-    db.get(argv.domain)
-      .then((zone_id) => {
-        // read redirect config file for domain
-        // gather zone/domain information from Cloudflare
-        Promise.all([
-          getZoneById(zone_id),
-          getZoneSettingsById(zone_id)
-        ]).then((results) => {
-          const [zone, settings] = results;
-          // the main event
-          checkSecurity(argv.configDir, zone, settings);
-        }).catch((err) => {
-          console.error(`Caught error: ${err}`);
-        });
-      })
-      .catch((err) => {
-        console.error(`Caught error: ${err}`);
-      });
-    db.close();
+    // NOTE: this should be redundant as yargs treats 'domain' as required argument
+    error('Which domain do you want to check?');
   }
+
+  // get zone
+  const zones = await getZonesByName(argv.domain, argv.accountId);
+  if (!zones || zones.length < 1) {
+    error(`No matching zone found for '${argv.domain}'!`);
+  }
+  if (zones.length > 1) {
+    error(`Multiple matching zones found for ${argv.domain}: ${zones.map((zone) => zone.name)}`);
+  }
+  const zone = zones[0];  
+
+  // get settings
+  const settings = await getZoneSettingsById(zone.id);
+  checkSecurity(argv.configDir, zone, settings);
 };
 
 export {
