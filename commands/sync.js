@@ -14,6 +14,7 @@ import {
   orange,
   purple,
   lightblue,
+  getDefaultDnsRecords,
   getLocalYamlSettings,
   getLocalYamlZones
 } from '../lib/shared.js';
@@ -115,24 +116,10 @@ const areZoneSettingsValid = async (zoneName) => {
   return data;
 };
 
-// generate valid DNS records for a zone
-const getValidDns = (zoneName) => [
-  {
-    name: zoneName,
-    type: 'A',
-    content: '192.0.2.0'
-  },
-  {
-    name: `www.${zoneName}`,
-    type: 'CNAME',
-    content: zoneName
-  }
-];
-
 const isStandardDns = async (zoneName) => {
   const data = zones.get(zoneName);
   const dns = await getDnsRecordsByZoneId(data.cloudflare.id);
-  const expectedRules = getValidDns(zoneName);
+  const expectedRules = getDefaultDnsRecords(zoneName);
   data.dns = {};
   data.dns.expected = { ...expectedRules }; // create copy of object
   data.dns.actual = [];
@@ -148,7 +135,9 @@ const isStandardDns = async (zoneName) => {
     const temp = {
       name: record.name,
       type: record.type,
-      content: record.content
+      content: record.content,
+      proxied: record.proxied,
+      ttl: record.ttl
     };
     data.dns.actual.push(temp);
     let validRule = false;
