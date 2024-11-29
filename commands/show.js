@@ -8,8 +8,7 @@ import * as YAML from 'js-yaml';
 import {
   error,
   green,
-  lightblue,
-  orange
+  lightblue
 } from '../lib/shared.js';
 import {
   getWorkerKVValuesByDomain,
@@ -44,7 +43,7 @@ const builder = (yargs) => {
 const handler = async (argv) => {
   if (!('domain' in argv)) {
     // NOTE: this should be redundant as yargs treats 'domain' as required argument
-    error('Which domain where you wanting to show redirects for?');
+    error('Which domain were you wanting to show redirects for?');
   }
 
   // show zone info
