@@ -7,13 +7,13 @@
 import inquirer from 'inquirer';
 import { diffString } from 'json-diff';
 import {
-  orange,
   createDNSRecords,
   error,
   getDefaultDnsRecords,
   green,
   lightblue,
-  yellow
+  yellow,
+  warn
 } from '../lib/shared.js';
 import {
   deleteDnsRecord,
@@ -76,7 +76,7 @@ const handler = async (argv) => {
     return;
   }
 
-  console.log(orange('The current DNS records are not standard (see differences below):'));
+  warn('The current DNS records are not standard (see differences below):');
   console.log(result);
   const replaceDNS = await inquirer.prompt({
     type: 'confirm',
