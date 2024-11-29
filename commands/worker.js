@@ -9,7 +9,7 @@ import {
 } from '../lib/cloudflare.js';
 import {
   lightblue,
-  orange
+  error
 } from '../lib/shared.js';
 
 /**
@@ -29,19 +29,17 @@ const handler = async (argv) => {
   // check zone exists
   const zones = await getZonesByName(domain, argv.accountId);
   if (!zones || zones.length < 1) {
-    console.error(orange(`No matching zone found for '${domain}'!`));
+    error(`No matching zone found for '${domain}'!`);
     process.exit(1);
   }
   if (zones.length > 1) {
-    console.error(orange(`Multiple matching zones found for ${domain}: ${zones.map((zone) => zone.name)}`));
-    process.exit(1);
+    error(`Multiple matching zones found for ${domain}: ${zones.map((zone) => zone.name)}`);
   }
 
   // check worker route exists
   const existingWorkerRoutes = await getWorkerRoutesByZoneId(zones[0].id);
   if (!existingWorkerRoutes || existingWorkerRoutes.length !== 1) {
-    console.error(orange(`Expecting a single worker route to be configured: ${existingWorkerRoutes}`));
-    process.exit(1);
+    error(`Expecting a single worker route to be configured: ${existingWorkerRoutes}`);
   }
 
   // open the redirects file
